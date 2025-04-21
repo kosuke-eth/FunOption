@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAppKitAccount } from "@reown/appkit/react";
+import { useAppKitAccount, useAppKit } from "@reown/appkit/react";
 import { useGetSigner } from "utils/useGetSigner";
 import { switchNetwork } from "appkit";
 import { GLOBAL_CONFIG } from "core/configs";
@@ -8,6 +8,7 @@ import { useState } from "react";
 
 export default function Header() {
   const { address } = useAppKitAccount();
+  const { open } = useAppKit();
   const getSigner = useGetSigner();
   const [isRequesting, setIsRequesting] = useState(false);
   const [showQRPopover, setShowQRPopover] = useState(false);
@@ -92,7 +93,16 @@ export default function Header() {
               Faucet
             </a> */}
 
-            {address ? <appkit-account-button /> : <appkit-connect-button />}
+            {address ? (
+              <appkit-account-button />
+            ) : (
+              <button
+                onClick={() => open()}
+                className="btn-primary"
+              >
+                Connect Wallet
+              </button>
+            )}
 
             <button
               disabled={isRequesting}
