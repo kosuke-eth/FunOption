@@ -37,7 +37,7 @@ export default function PredictionInput({
   return (
     <div className="rounded-xl border border-outline-variant p-5">
       <div>
-          <p className="text-surface-on-var font-medium">Prediction</p>
+        <p className="text-surface-on-var font-medium">Prediction</p>
         <div className="flex justify-between mb-5">
           {currBin ? (
             <div className="font-bold text-xl">
@@ -62,7 +62,7 @@ export default function PredictionInput({
 
         <div className="flex justify-between my-5">
           <p className="text-surface-on-var font-medium">avg price</p>
-          <p className="text-surface-on text-xl font-bold">
+          <p className="text-xl font-bold">
             {isTicketLoading ? `...` : avgPriceText}
           </p>
         </div>

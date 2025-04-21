@@ -14,7 +14,7 @@ export const DatePickerItem = ({
   };
   return (
     <div
-      className="bg-surface-container-high px-5 h-10 font-bold flex text-sm items-center gap-2 rounded-lg"
+      className="bg-surface-container-high px-5 h-10 font-bold flex text-sm items-center gap-2 rounded-lg text-black"
       onClick={handleClick}
     >
       <span>{formattedDate}</span>

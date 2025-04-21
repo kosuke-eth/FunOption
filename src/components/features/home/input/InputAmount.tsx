@@ -44,7 +44,7 @@ export const InputAmount = ({
             <input
               value={amount}
               onChange={onChangeValue}
-              className="outline-none text-right"
+              className="outline-none text-right bg-dark-light border rounded-lg p-2"
               placeholder="$0"
             />
             <p className="ml-1">USDC</p>

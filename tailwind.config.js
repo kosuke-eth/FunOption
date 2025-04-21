@@ -33,7 +33,11 @@ export default {
           950: "#23134f",
           DEFAULT: "#4520b5",
         },
-        green: "#34A853"
+        green: "#34A853",
+        dark: {
+          light: "#18191c",
+          DEFAULT: "#121214",
+        },
       },
       fontFamily: {
         sans: ["Pretendard", "system-ui", "sans-serif"],

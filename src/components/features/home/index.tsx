@@ -17,9 +17,9 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-2 py-9">
       <div className="flex gap-2">
-      <ToggleChartSwitch
-        isHeatmap={input.isHeatmap}
-        setIsHeatmap={input.setIsHeatmap}
+        <ToggleChartSwitch
+          isHeatmap={input.isHeatmap}
+          setIsHeatmap={input.setIsHeatmap}
         />
         <DatePickerItem {...input} />
       </div>

@@ -23,20 +23,20 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-dark shadow-sm">
       <nav className="max-w-7xl px-6 mx-auto">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
             <Link
               to="/"
-              className="text-xl flex items-center gap-1.5 font-bold text-primary"
+              className="text-xl flex items-center gap-1.5 font-bold text-white"
             >
-              <img src="public/Favicon.png" alt="logo" className="w-6 h-6" />
+              <img src="/Favicon.png" alt="logo" className="w-6 h-6" />
               FunOption
             </Link>
           </div>
           <div className="flex gap-5 items-center">
-            <Link to="/profile" className="text-gray-800">
+            <Link to="/profile" className="text-white">
               History
             </Link>
 
@@ -44,14 +44,14 @@ export default function Header() {
 
               {/* QR 코드 팝오버 */}
               {showQRPopover && (
-                <div className="fixed right-8 top-8 bg-white rounded-2xl overflow-hidden shadow-lg z-50 w-[280px]">
+                <div className="fixed right-8 top-8 bg-dark rounded-2xl overflow-hidden shadow-lg z-50 w-[280px]">
                   <div className="absolute top-2 right-2">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowQRPopover(false);
                       }}
-                      className="text-gray-500 hover:text-gray-700 bg-white rounded-full p-1"
+                      className="text-gray-500 hover:text-gray-700 bg-dark rounded-full p-1"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
