@@ -39,6 +39,9 @@ export default function Header() {
             <Link to="/profile" className="text-white">
               History
             </Link>
+            <Link to="/options" className="text-white">
+              オプション可視化
+            </Link>
 
             <div className="relative">
 

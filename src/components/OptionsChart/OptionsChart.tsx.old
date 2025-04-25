@@ -1,0 +1,458 @@
+import React, { useRef, useEffect, useState } from 'react';
+import * as d3 from 'd3';
+import { OptionData, currentPrice } from '../../mockData/optionsMock';
+import './OptionsChart.css';
+
+// Helper function to format currency
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+interface OptionsChartProps {
+  data: OptionData[];
+  currentPrice: number;
+  width?: number;
+  height?: number;
+  onOptionSelect?: (option: OptionData) => void;
+}
+
+const OptionsChart: React.FC<OptionsChartProps> = ({
+  data,
+  currentPrice,
+  width = 800,
+  height = 600,
+  onOptionSelect,
+}) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [selectedOption, setSelectedOption] = useState<OptionData | null>(null);
+  const [containerWidth, setContainerWidth] = useState(width);
+  const [hoveredOption, setHoveredOption] = useState<OptionData | null>(null);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    // SVG要素の実際の幅を取得して状態を更新
+    const updateWidth = () => {
+      const newWidth = svgRef.current?.parentElement?.clientWidth ?? width;
+      setContainerWidth(newWidth);
+    };
+
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (svgRef.current.parentElement) {
+      resizeObserver.observe(svgRef.current.parentElement);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [width]);
+
+  useEffect(() => {
+    if (data.length === 0) return;
+
+    // 不正なデータの除外（NaN値を含むデータポイントを除外）
+    const validData = data.filter(d =>
+      !Number.isNaN(d.strike) &&
+      !Number.isNaN(d.markPrice) &&
+      !Number.isNaN(d.iv) &&
+      !Number.isNaN(d.delta)
+    );
+
+    // 有効なデータがない場合は描画しない
+    if (validData.length === 0) return;
+
+    // Clear previous chart
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
+
+    // Chart margins
+    const margin = { top: 40, right: 40, bottom: 60, left: 80 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    // Safely calculate min and max values
+    const safeMinStrike = d3.min(validData, d => d.strike) || 0;
+    const safeMaxStrike = d3.max(validData, d => d.strike) || 100000;
+    const safeMaxPrice = d3.max(validData, d => d.markPrice) || 10000;
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([safeMinStrike * 0.9, safeMaxStrike * 1.1])
+      .range([0, innerWidth]);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, safeMaxPrice * 1.2])
+      .range([innerHeight, 0]);
+
+    // Create axes
+    const xAxis = d3.axisBottom(xScale).tickFormat(d => `$${d}`);
+    const yAxis = d3.axisLeft(yScale)
+      .tickFormat(d => `$${d}`)
+      .ticks(8); // 目盛りの数を制限
+
+    svg
+      .append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(${margin.left},${innerHeight + margin.top})`)
+      .call(xAxis);
+
+    svg
+      .append('g')
+      .attr('class', 'y-axis')
+      .attr('transform', `translate(${margin.left},${margin.top})`)
+      .call(yAxis);
+
+    // Add axis labels
+    svg
+      .append('text')
+      .attr('class', 'x-label')
+      .attr('text-anchor', 'middle')
+      .attr('x', width / 2)
+      .attr('y', height - 5)
+      .text('Strike Price (USD)');
+
+    svg
+      .append('text')
+      .attr('class', 'y-label')
+      .attr('text-anchor', 'middle')
+      .attr('transform', `translate(${-margin.left + 20},${innerHeight / 2}) rotate(-90)`)
+      .text('Mark Price');
+
+    // ヒートマップのグリッドを生成（より滑らかな可視化のために）
+
+    // 安全に計算された範囲を使用
+    const minStrike = safeMinStrike;
+    const maxStrike = safeMaxStrike;
+    const strikeDiff = maxStrike - minStrike;
+
+    // 参考コードを参考にセルのサイズ計算を改善
+    // x方向のグリッド数を適切な値に設定
+    const xGridSize = Math.min(40, Math.max(20, validData.length)); // データ数に基づいて適切なグリッド数を選択
+    const yGridSize = 30; // y方向のグリッド数も設定
+
+    // セルのパディングを明示的に定義
+    const cellPadding = 1.5; // セル間の隙間
+
+    // グリッドサイズに基づいてセル幅と高さを計算
+    const cellWidth = innerWidth / xGridSize - cellPadding;
+    const cellHeight = innerHeight / yGridSize - cellPadding;
+
+    // 均一なグリッドを作成（実際のデータポイントとは独立）
+    const xStepSize = strikeDiff / (xGridSize - 1);
+
+    // グリッドデータを作成
+    const gridData: Array<{ x: number, y: number, value: number, option: OptionData | null }> = [];
+
+    // 均一なグリッドを生成
+    for (let xi = 0; xi < xGridSize; xi++) {
+      const strikeValue = minStrike + (xi * xStepSize);
+      const xPos = xScale(strikeValue);
+
+      // 最も近いオプションとその距離を見つける
+      let closestOption: OptionData | null = null;
+      let minDistance = Number.MAX_VALUE;
+
+      for (const option of validData) {
+        const distance = Math.abs(option.strike - strikeValue);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestOption = option;
+        }
+      }
+
+      // 距離が大きすぎる場合はスキップ
+      // ここではデータ点の密度に基づいてしきい値を設定
+      const dataPointDensity = validData.length > 0 ? strikeDiff / validData.length : 1000;
+      if (minDistance > dataPointDensity * 1.5) {
+        closestOption = null;
+      }
+
+      // y方向のグリッドを生成
+      for (let yi = 0; yi < yGridSize; yi++) {
+        const yValue = (yi / (yGridSize - 1)) * (safeMaxPrice * 1.2);
+        const yPos = yScale(yValue);
+        let intensity = 0;
+
+        // 最も近いオプションがあれば、その価格曲線との距離に基づいて強度を計算
+        if (closestOption) {
+          const markPriceYPos = yScale(closestOption.markPrice);
+          const distance = Math.abs(markPriceYPos - yPos);
+          intensity = Math.max(0, 1 - distance / (innerHeight * 0.2)); // 減衰率を調整
+
+          // 強度にバイスコアを反映
+          intensity = intensity * (closestOption.buyScore !== undefined ? closestOption.buyScore : 50) / 100;
+        }
+
+        // セルのデータをシンプルに設定
+        gridData.push({
+          x: xPos,
+          y: yPos,
+          value: intensity,
+          option: closestOption
+        });
+      }
+    }
+
+    // Color scale for the heatmap using tailwind primary colors gradient
+    const colorScale = d3.scaleLinear<string>()
+      .domain([0, 0.2, 0.4, 0.6, 0.8, 1])
+      .range(['#f7f0ff', '#e9d9ff', '#d4b4ff', '#9c6bff', '#6933f5', '#4520b5'])
+      .interpolate(d3.interpolateRgb.gamma(2.2));
+
+    // Add the background
+    svg
+      .append('rect')
+      .attr('width', innerWidth)
+      .attr('height', innerHeight)
+      .attr('fill', '#f8f9fa'); // より明るい背景色に変更
+
+    // ヒートマップを追加
+    svg
+      .selectAll('.heat-cell')
+      .data(gridData)
+      .enter()
+      .append('rect')
+      .attr('class', 'heat-cell')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('width', cellWidth) // セル幅は計算通りに設定
+      .attr('height', cellHeight) // セル高さも計算通りに設定
+      .attr('fill', d => d.value > 0 ? colorScale(d.value) : '#ffffff') // 強度が0の場合は白色に
+      .attr('opacity', 0.9) // 透明度を適切に設定
+      .attr('rx', 1) // 少し丸みを帯びたコーナー
+      .attr('ry', 1)
+      .on('mouseover', (event, d) => {
+        // オプションがない場合はツールチップを表示しない
+        if (!d.option) return;
+
+        const tooltip = d3.select(tooltipRef.current);
+        tooltip
+          .style('display', 'block')
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 10}px`)
+          .html(`
+            <div class="tooltip-strike">Strike: ${formatCurrency(d.option.strike)}</div>
+            <div class="tooltip-price">Price: ${formatCurrency(d.option.markPrice)}</div>
+            <div class="tooltip-iv">IV: ${d.option.iv.toFixed(1)}%</div>
+            <div class="tooltip-delta">Δ: ${d.option.delta.toFixed(2)}</div>
+            <div class="tooltip-volume">Volume: ${d.option.volume.toLocaleString()}</div>
+            ${d.option.buyScore ? `<div class="tooltip-score">Buy Score: ${d.option.buyScore}/100</div>` : ''}
+            <div class="tooltip-hint">Click to trade</div>
+          `);
+      })
+      .on('click', (event, d) => {
+        if (!d.option) return; // オプションがない場合は何もしない
+
+        setSelectedOption(d.option);
+        if (onOptionSelect) {
+          onOptionSelect(d.option);
+        }
+      })
+      .on('mouseout', () => {
+        const tooltip = d3.select(tooltipRef.current);
+        tooltip.style('display', 'none');
+      })
+      .on('click', (event, d) => {
+        setSelectedOption(d.option);
+        if (onOptionSelect) {
+          onOptionSelect(d.option);
+        }
+      });
+
+    // Add the current price vertical line
+    if (currentPrice && !Number.isNaN(currentPrice)) {
+      svg
+        .append('line')
+        .attr('class', 'current-price-line')
+        .attr('x1', xScale(currentPrice))
+        .attr('x2', xScale(currentPrice))
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', '#f5a623')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '5,5');
+    }
+
+    // Add current price label
+    if (currentPrice && !Number.isNaN(currentPrice)) {
+      svg
+        .append('text')
+        .attr('class', 'current-price-label')
+        .attr('x', xScale(currentPrice) + 5)
+        .attr('y', 15)
+        .attr('fill', '#f5a623')
+        .text(`Current Price: ${formatCurrency(currentPrice)}`);
+    }
+
+    // Create line generator
+    const line = d3
+      .line<OptionData>()
+      .x(d => xScale(d.strike))
+      .y(d => yScale(d.markPrice))
+      .curve(d3.curveBasis)
+      .defined(d => !Number.isNaN(d.strike) && !Number.isNaN(d.markPrice)); // NaN値のポイントをスキップ
+
+    // Prepare defs for gradient
+    const defs = svg.append('defs');
+
+    // Add the price curve as an overlay on the heatmap
+    svg
+      .append('path')
+      .datum(validData)
+      .attr('class', 'price-curve')
+      .attr('fill', 'none')
+      .attr('stroke', '#f5a623')
+      .attr('stroke-width', 3)
+      .attr('d', line)
+      .style('filter', 'drop-shadow(0px 3px 5px rgba(245, 166, 35, 0.5))');
+
+    // Add key points
+    const tooltip = d3.select(tooltipRef.current);
+
+    svg
+      .selectAll('.key-point')
+      .data(validData)
+      .enter()
+      .append('circle')
+      .attr('class', 'key-point')
+      .attr('cx', d => xScale(d.strike))
+      .attr('cy', d => yScale(d.markPrice))
+      .attr('r', 3)
+      .attr('fill', '#f5a623')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1)
+      .attr('cursor', 'pointer')
+      .on('mouseover', (event, d) => {
+        tooltip
+          .style('display', 'block')
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 10}px`)
+          .html(`
+            <div class="tooltip-strike">Strike: ${formatCurrency(d.strike)}</div>
+            <div class="tooltip-price">Price: ${formatCurrency(d.markPrice)}</div>
+            <div class="tooltip-iv">IV: ${d.iv.toFixed(1)}%</div>
+            <div class="tooltip-delta">Δ: ${d.delta.toFixed(2)}</div>
+            <div class="tooltip-volume">Volume: ${d.volume.toLocaleString()}</div>
+            ${d.buyScore ? `<div class="tooltip-score">Buy Score: ${d.buyScore}/100</div>` : ''}
+            <div class="tooltip-hint">Click to trade</div>
+          `);
+      })
+      .on('mouseout', () => {
+        tooltip.style('display', 'none');
+      })
+      .on('click', (event, d) => {
+        setSelectedOption(d);
+        if (onOptionSelect) {
+          onOptionSelect(d);
+        }
+      });
+
+    // Add legend for heatmap intensity
+    const legendWidth = 200;
+    const legendHeight = 15;
+    const legendX = innerWidth - legendWidth;
+    const legendY = -30; // トップマージンと揃える
+
+    // Create gradient for legend
+    const heatmapGradient = defs
+      .append('linearGradient')
+      .attr('id', 'heatmap-gradient')
+      .attr('x1', '0%')
+      .attr('x2', '100%')
+      .attr('y1', '0%')
+      .attr('y2', '0%');
+
+    // Add color stops for primary color gradient from tailwind
+    heatmapGradient.append('stop').attr('offset', '0%').attr('stop-color', '#ffffff'); // 白色（強度0）
+    heatmapGradient.append('stop').attr('offset', '20%').attr('stop-color', '#f7f0ff'); // primary-50
+    heatmapGradient.append('stop').attr('offset', '40%').attr('stop-color', '#e9d9ff'); // primary-100
+    heatmapGradient.append('stop').attr('offset', '60%').attr('stop-color', '#d4b4ff'); // primary-200
+    heatmapGradient.append('stop').attr('offset', '80%').attr('stop-color', '#9c6bff'); // primary-400
+    heatmapGradient.append('stop').attr('offset', '100%').attr('stop-color', '#4520b5'); // primary-800 (DEFAULT)
+
+    // Create legend group
+    const legend = svg.append('g')
+      .attr('class', 'legend')
+      .attr('transform', `translate(${legendX},${legendY})`);
+
+    // Add legend rectangle
+    legend.append('rect')
+      .attr('width', legendWidth)
+      .attr('height', legendHeight)
+      .attr('rx', 3) // Rounded corners
+      .attr('ry', 3)
+      .style('fill', 'url(#heatmap-gradient)')
+      .style('stroke', '#555')
+      .style('stroke-width', 0.5);
+
+    // Add legend title
+    legend.append('text')
+      .attr('x', 0)
+      .attr('y', -8)
+      .attr('font-size', '10px')
+      .attr('font-weight', 500)
+      .attr('fill', '#ccc')
+      .text('Trading Activity');
+
+    // Add legend labels
+    legend.append('text')
+      .attr('x', 0)
+      .attr('y', legendHeight + 12)
+      .attr('font-size', '10px')
+      .attr('fill', '#aaa')
+      .text('Low');
+
+    legend.append('text')
+      .attr('x', legendWidth)
+      .attr('y', legendHeight + 12)
+      .attr('font-size', '10px')
+      .attr('fill', '#aaa')
+      .attr('text-anchor', 'end')
+      .text('High');
+
+  }, [data, currentPrice, width, height, onOptionSelect]);
+
+  return (
+    <div className="options-chart-container">
+      <svg
+        ref={svgRef}
+        width="100%"
+        height={height}
+        viewBox={`0 0 ${containerWidth} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="options-chart-svg"
+      ></svg>
+      <div className="tooltip" ref={tooltipRef}></div>
+      {selectedOption && (
+        <div className="selected-option-info">
+          <h3>Selected Option</h3>
+          <div className="selected-option-details">
+            <div>Type: {selectedOption.type === 'call' ? 'Call' : 'Put'}</div>
+            <div>Strike: {formatCurrency(selectedOption.strike)}</div>
+            <div>Price: {formatCurrency(selectedOption.markPrice)}</div>
+            <div>IV: {selectedOption.iv}%</div>
+            <div>Delta: {selectedOption.delta.toFixed(2)}</div>
+            <div>Expiry: {selectedOption.expiry}</div>
+          </div>
+          <button
+            className="trade-button"
+            onClick={() => {
+              // Deep-Link to Bybit (mock implementation)
+              alert(`Trade on Bybit: ${selectedOption.type.toUpperCase()} ${selectedOption.strike} (${selectedOption.expiry})`);
+            }}
+          >
+            Trade this option
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default OptionsChart;
