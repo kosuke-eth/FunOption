@@ -58,7 +58,8 @@
 
 /* 取引ボタン */
 .trade-button {
-  background-color: #6933f5; /* primary-600 */
+  background-color: #6933f5;
+  /* primary-600 */
   color: white;
   border: none;
   padding: 8px 16px;
@@ -69,7 +70,8 @@
 }
 
 .trade-button:hover {
-  background-color: #5626dc; /* primary-700 */
+  background-color: #5626dc;
+  /* primary-700 */
 }
 
 /* データポイントのホバー効果 */

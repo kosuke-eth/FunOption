@@ -90,6 +90,38 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('rx', 2)
       .attr('ry', 2);
 
+    /* ---------------------------- 凡例 ---------------------------- */
+    const legendData = [
+      { label: 'Premium', color: ChartStyles.colors.highlight },
+      { label: 'Intrinsic', color: ChartStyles.colors.intrinsic },
+      { label: 'Time Value', color: ChartStyles.colors.timeValue },
+    ];
+
+    const legendGroup = svg
+      .append('g')
+      .attr('class', 'legend')
+      .attr('transform', `translate(${margin.left}, ${margin.top - 24})`);
+
+    legendData.forEach((item, i) => {
+      const g = legendGroup.append('g').attr('transform', `translate(${i * 120}, 0)`);
+
+      g.append('line')
+        .attr('x1', 0)
+        .attr('x2', 20)
+        .attr('y1', 0)
+        .attr('y2', 0)
+        .attr('stroke', item.color)
+        .attr('stroke-width', 4)
+        .attr('stroke-linecap', 'round');
+
+      g.append('text')
+        .attr('x', 26)
+        .attr('y', 4)
+        .attr('fill', ChartStyles.colors.legendText)
+        .attr('font-size', ChartStyles.sizes.fontSize.small)
+        .text(item.label);
+    });
+
     /* ---------------------------- 軸 ---------------------------- */
     chartGroup
       .append('g')
@@ -195,11 +227,32 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .data(data)
       .enter()
       .append('circle')
-      .attr('class', 'data-point')
+      .attr('class', (d) => {
+        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+        const timeVal = Math.max(0, d.markPrice - intrinsic);
+        const totalRisk = timeVal / (d.markPrice || 1);
+        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
+        return isRecommend ? 'data-point recommend' : 'data-point';
+      })
       .attr('cx', (d) => xScale(d.strike))
       .attr('cy', (d) => yScale(d.markPrice))
-      .attr('r', 3)
-      .attr('fill', (d) => (d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put))
+      .attr('r', (d) => {
+        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+        const timeVal = Math.max(0, d.markPrice - intrinsic);
+        const totalRisk = timeVal / (d.markPrice || 1);
+        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
+        return isRecommend ? 6 : 3;
+      })
+      .attr('fill', (d) => {
+        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+        const timeVal = Math.max(0, d.markPrice - intrinsic);
+        const totalRisk = timeVal / (d.markPrice || 1);
+        // シンプルルール: ATM付近かつ時間価値が適度(40-60%)
+        if (Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6) {
+          return ChartStyles.colors.recommend;
+        }
+        return d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put;
+      })
       .on('mouseover', (event, d) => {
         if (!containerRef.current) return;
         const [x, y] = d3.pointer(event, containerRef.current);
@@ -221,6 +274,9 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         onOptionSelect?.(d);
       });
 
+    // 推奨オプションの円を最前面に移動
+    chartGroup.selectAll('.recommend').raise();
+
     /* ---------------------------- データライン ---------------------------- */
     const sortedData = [...data].sort((a, b) => a.strike - b.strike);
     const lineGenerator = d3
@@ -237,6 +293,51 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('stroke', ChartStyles.colors.highlight)
       .attr('stroke-width', ChartStyles.sizes.lineWidth.normal)
       .attr('d', lineGenerator);
+
+    /* ------------------------ 内在価値ライン ------------------------ */
+    const intrinsicData = sortedData.map((d) => {
+      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+      return { ...d, intrinsic };
+    });
+
+    const intrinsicLine = d3
+      .line<typeof intrinsicData[0]>()
+      .x((d) => xScale(d.strike))
+      .y((d) => yScale(d.intrinsic))
+      .curve(d3.curveMonotoneX);
+
+    chartGroup
+      .append('path')
+      .datum(intrinsicData)
+      .attr('class', 'intrinsic-line')
+      .attr('fill', 'none')
+      .attr('stroke', ChartStyles.colors.intrinsic)
+      .attr('stroke-width', ChartStyles.sizes.lineWidth.thin)
+      .attr('stroke-dasharray', '3 3')
+      .attr('d', intrinsicLine);
+
+    /* ------------------------ 時間価値ライン ------------------------ */
+    const timeValueData = sortedData.map((d, i) => {
+      const intrinsic = intrinsicData[i].intrinsic;
+      const timeVal = Math.max(0, d.markPrice - intrinsic);
+      return { ...d, timeVal };
+    });
+
+    const timeValueLine = d3
+      .line<typeof timeValueData[0]>()
+      .x((d) => xScale(d.strike))
+      .y((d) => yScale(d.timeVal))
+      .curve(d3.curveMonotoneX);
+
+    chartGroup
+      .append('path')
+      .datum(timeValueData)
+      .attr('class', 'timevalue-line')
+      .attr('fill', 'none')
+      .attr('stroke', ChartStyles.colors.timeValue)
+      .attr('stroke-width', ChartStyles.sizes.lineWidth.thin)
+      .attr('stroke-dasharray', '4 2')
+      .attr('d', timeValueLine);
 
     /* ---------------------------- 現在価格線 ---------------------------- */
     chartGroup
