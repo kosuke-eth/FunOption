@@ -269,3 +269,46 @@
   border-color: #2196f3;
   color: #0d47a1;
 }
+
+/* データポイントベース */
+.data-point {
+  transition: r 0.15s;
+}
+
+.data-point.recommend {
+  stroke: #ffffff;
+  stroke-width: 1px;
+  paint-order: stroke;
+}
+
+.data-point.highlight {
+  stroke: #4a91ff;
+  stroke-width: 2px;
+}
+
+.data-point.dimmed {
+  opacity: 0.15;
+}
+
+/* バッジ */
+.badge {
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.badge-bullish {
+  background: #00c49a;
+}
+
+.badge-bearish {
+  background: #ff4a91;
+}
+
+.badge-neutral {
+  background: #555;
+}
+
+/* removed control styles */

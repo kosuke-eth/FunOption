@@ -222,6 +222,48 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     }
 
     /* ---------------------------- データポイント ---------------------------- */
+    // hover state helpers
+    const handleMouseOverPoint = (event: any, d: OptionData) => {
+      if (!containerRef.current) return;
+      // highlight same strike points
+      chartGroup
+        .selectAll<SVGCircleElement, OptionData>('.data-point')
+        .classed('dimmed', (p) => p.strike !== d.strike)
+        .classed('highlight', (p) => p.strike === d.strike);
+
+      const [x, y] = d3.pointer(event, containerRef.current);
+      const tooltipSel = d3
+        .select(tooltipRef.current)
+        .style('display', 'block')
+        .style('left', `${x + 10}px`)
+        .style('top', `${y - 10}px`)
+        .html(makeTooltipHtml(d));
+    };
+
+    const handleMouseOutPoint = () => {
+      chartGroup.selectAll('.data-point').classed('dimmed highlight', false);
+      d3.select(tooltipRef.current).style('display', 'none');
+    };
+
+    const makeTooltipHtml = (d: OptionData) => {
+      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+      const timeValPct = ((Math.max(0, d.markPrice - intrinsic) / d.markPrice) * 100).toFixed(0);
+      // risk-reward: delta×100 vs timeValPct 差を簡易指標
+      const rrRaw = (Math.abs(d.delta) * 100 - Number(timeValPct));
+      const rrBadge = rrRaw > 10 ? `<span class="badge badge-bullish">Good RR</span>` : rrRaw < -10 ? `<span class="badge badge-bearish">Poor RR</span>` : `<span class="badge badge-neutral">Neutral</span>`;
+      return `
+        <div class="tooltip-strike">Strike: ${formatCurrency(d.strike)}</div>
+        <div class="tooltip-price">Price: ${formatCurrency(d.markPrice)}</div>
+        <div class="tooltip-delta">Δ: ${d.delta.toFixed(2)}</div>
+        <div class="tooltip-volume">Vol: ${d.volume}</div>
+        <div class="tooltip-risk">TimeVal/Price: ${timeValPct}%</div>
+        <div class="tooltip-rr">${rrBadge}</div>`;
+    };
+
+    // ボリュームスケール（円サイズに反映）
+    const maxVolume = d3.max(data, (d) => d.volume) || 1;
+    const volumeScale = d3.scaleSqrt<number, number>().domain([0, maxVolume]).range([ChartStyles.sizes.pointRadius.small, ChartStyles.sizes.pointRadius.large]);
+
     chartGroup
       .selectAll('.data-point')
       .data(data)
@@ -241,34 +283,18 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         const timeVal = Math.max(0, d.markPrice - intrinsic);
         const totalRisk = timeVal / (d.markPrice || 1);
         const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
-        return isRecommend ? 6 : 3;
+        const baseR = volumeScale(d.volume);
+        return isRecommend ? baseR + 2 : baseR;
       })
       .attr('fill', (d) => {
         const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
         const timeVal = Math.max(0, d.markPrice - intrinsic);
         const totalRisk = timeVal / (d.markPrice || 1);
-        // シンプルルール: ATM付近かつ時間価値が適度(40-60%)
-        if (Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6) {
-          return ChartStyles.colors.recommend;
-        }
-        return d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put;
+        const color = d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put;
+        return totalRisk < 0.3 || totalRisk > 0.7 ? d3.color(color)!.darker(0.5).toString() : color;
       })
-      .on('mouseover', (event, d) => {
-        if (!containerRef.current) return;
-        const [x, y] = d3.pointer(event, containerRef.current);
-        d3.select(tooltipRef.current)
-          .style('display', 'block')
-          .style('left', `${x + 10}px`)
-          .style('top', `${y - 10}px`)
-          .html(
-            `<div class="tooltip-strike">Strike: ${formatCurrency(
-              d.strike,
-            )}</div><div class="tooltip-price">Price: ${formatCurrency(d.markPrice)}</div>`,
-          );
-      })
-      .on('mouseout', () => {
-        d3.select(tooltipRef.current).style('display', 'none');
-      })
+      .on('mouseover', handleMouseOverPoint)
+      .on('mouseout', handleMouseOutPoint)
       .on('click', (event, d) => {
         setSelectedOption(d);
         onOptionSelect?.(d);
@@ -276,6 +302,34 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
 
     // 推奨オプションの円を最前面に移動
     chartGroup.selectAll('.recommend').raise();
+
+    /* --------- デルタ帯を示すガイドライン (0.25 / 0.50 / 0.75) --------- */
+    const deltaThresholds = [0.25, 0.5, 0.75];
+    deltaThresholds.forEach((thr) => {
+      // コール側（正のデルタ）
+      const closestCall = data
+        .filter((d) => d.type === 'call')
+        .reduce((prev, curr) => (Math.abs(curr.delta - thr) < Math.abs(prev.delta - thr) ? curr : prev));
+      if (closestCall) {
+        const xPos = xScale(closestCall.strike);
+        chartGroup
+          .append('line')
+          .attr('x1', xPos)
+          .attr('x2', xPos)
+          .attr('y1', 0)
+          .attr('y2', innerHeight)
+          .attr('stroke', '#444')
+          .attr('stroke-dasharray', '2 2');
+
+        chartGroup
+          .append('text')
+          .attr('x', xPos + 4)
+          .attr('y', 12)
+          .attr('fill', '#666')
+          .attr('font-size', 10)
+          .text(`Δ ${thr}`);
+      }
+    });
 
     /* ---------------------------- データライン ---------------------------- */
     const sortedData = [...data].sort((a, b) => a.strike - b.strike);
@@ -388,13 +442,17 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
   /* ---------------------------- JSX ---------------------------- */
   return (
     <div className="options-chart-container" ref={containerRef}>
-      <svg ref={svgRef} width="100%" height={height}></svg>
+      <svg ref={svgRef} width={width} height={height} />
       <div className="tooltip" ref={tooltipRef} />
       {selectedOption && (
         <div className="selected-option-info">
           <h3>Selected Option</h3>
-          <div>Strike: {formatCurrency(selectedOption.strike)}</div>
-          <div>Price: {formatCurrency(selectedOption.markPrice)}</div>
+          <div className="selected-option-details">
+            <span>Strike: {formatCurrency(selectedOption.strike)}</span>
+            <span>Price: {formatCurrency(selectedOption.markPrice)}</span>
+            <span>Δ: {selectedOption.delta.toFixed(2)}</span>
+            <span>Vol: {selectedOption.volume}</span>
+          </div>
         </div>
       )}
     </div>
