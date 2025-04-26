@@ -396,24 +396,8 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('d', timeValueLine);
 
     /* ---------------------------- 現在価格線 ---------------------------- */
-    chartGroup
-      .append('line')
-      .attr('x1', 0)
-      .attr('x2', innerWidth)
-      .attr('y1', yScale(currentPrice))
-      .attr('y2', yScale(currentPrice))
-      .attr('stroke', ChartStyles.colors.currentPrice)
-      .attr('stroke-dasharray', '4 4');
+    // 現在価格の横線とラベルは UI 方針により不要のため削除
 
-    chartGroup
-      .append('text')
-      .attr('x', innerWidth - 5)
-      .attr('y', yScale(currentPrice) - 6)
-      .attr('text-anchor', 'end')
-      .attr('fill', ChartStyles.colors.currentPrice)
-      .text(`Current: ${formatCurrency(currentPrice)}`);
-
-    /* ---------------------------- 現在価格縦線 ---------------------------- */
     chartGroup
       .append('line')
       .attr('x1', xScale(currentPrice))
