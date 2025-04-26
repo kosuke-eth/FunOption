@@ -305,31 +305,33 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
 
     /* --------- デルタ帯を示すガイドライン (0.25 / 0.50 / 0.75) --------- */
     const deltaThresholds = [0.25, 0.5, 0.75];
-    deltaThresholds.forEach((thr) => {
-      // コール側（正のデルタ）
-      const closestCall = data
-        .filter((d) => d.type === 'call')
-        .reduce((prev, curr) => (Math.abs(curr.delta - thr) < Math.abs(prev.delta - thr) ? curr : prev));
-      if (closestCall) {
-        const xPos = xScale(closestCall.strike);
-        chartGroup
-          .append('line')
-          .attr('x1', xPos)
-          .attr('x2', xPos)
-          .attr('y1', 0)
-          .attr('y2', innerHeight)
-          .attr('stroke', '#444')
-          .attr('stroke-dasharray', '2 2');
+    const callOptions = data.filter((d) => d.type === 'call');
+    if (callOptions.length) {
+      deltaThresholds.forEach((thr) => {
+        const closestCall = callOptions.reduce((prev, curr) =>
+          Math.abs(curr.delta - thr) < Math.abs(prev.delta - thr) ? curr : prev,
+        );
+        if (closestCall) {
+          const xPos = xScale(closestCall.strike);
+          chartGroup
+            .append('line')
+            .attr('x1', xPos)
+            .attr('x2', xPos)
+            .attr('y1', 0)
+            .attr('y2', innerHeight)
+            .attr('stroke', '#444')
+            .attr('stroke-dasharray', '2 2');
 
-        chartGroup
-          .append('text')
-          .attr('x', xPos + 4)
-          .attr('y', 12)
-          .attr('fill', '#666')
-          .attr('font-size', 10)
-          .text(`Δ ${thr}`);
-      }
-    });
+          chartGroup
+            .append('text')
+            .attr('x', xPos + 4)
+            .attr('y', 12)
+            .attr('fill', '#666')
+            .attr('font-size', 10)
+            .text(`Δ ${thr}`);
+        }
+      });
+    }
 
     /* ---------------------------- データライン ---------------------------- */
     const sortedData = [...data].sort((a, b) => a.strike - b.strike);
