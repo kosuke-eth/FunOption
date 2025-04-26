@@ -29,7 +29,7 @@ export const ChartStyles = {
     currentPrice: '#e0b84d', // 現在価格線の色
     highlight: '#4A91FF', // ハイライト色
     tooltip: '#f1f1f2',   // ツールチップのテキスト色
-    call: '#4A91FF',      // コールオプションの色
+    call: '#00C49A',      // コールオプションの色
     put: '#FF4A91',       // プットオプションの色
     legendText: '#c9c9d0', // 凡例テキストの色
     intrinsic: '#F5A623',  // 内在価値ライン色 (オレンジ)
@@ -64,7 +64,7 @@ export const ChartStyles = {
     borderRadius: 4, // 全体の角丸半径
   },
   // 強度に基づく色を返す関数
-  getIntensityColor: function(intensity: number) {
+  getIntensityColor: function (intensity: number) {
     return getIntensityColor(intensity);
   }
 };

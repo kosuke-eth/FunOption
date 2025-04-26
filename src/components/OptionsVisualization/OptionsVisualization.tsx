@@ -3,6 +3,7 @@ import OptionsChart from '../OptionsChart/OptionsChart';
 import { OptionData } from '../../mockData/optionsMock';
 import { useOptionsData } from '../../providers/OptionsDataProvider';
 import './OptionsVisualization.css';
+import { ChartStyles } from '../OptionsChart/colorUtils';
 
 // 日付をフォーマットするヘルパー関数
 const formatExpiryDate = (dateStr: string): string => {
@@ -69,12 +70,14 @@ const OptionsVisualization: React.FC = () => {
         <button
           className={`tab ${activeTab === 'call' ? 'active' : ''}`}
           onClick={() => setActiveTab('call')}
+          style={activeTab === 'call' ? { backgroundColor: ChartStyles.colors.call, color: '#fff' } : {}}
         >
           Call Options
         </button>
         <button
           className={`tab ${activeTab === 'put' ? 'active' : ''}`}
           onClick={() => setActiveTab('put')}
+          style={activeTab === 'put' ? { backgroundColor: ChartStyles.colors.put, color: '#fff' } : {}}
         >
           Put Options
         </button>

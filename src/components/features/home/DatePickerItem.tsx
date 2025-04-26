@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { usePrediction } from "./input/usePrediction";
 import DatePicker from "react-datepicker";
 import formatDate from "./input/formatDate";
+import './DatePickerItem.css';
 
 export const DatePickerItem = ({
   selectedDate,

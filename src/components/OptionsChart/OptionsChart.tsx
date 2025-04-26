@@ -92,9 +92,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
 
     /* ---------------------------- 凡例 ---------------------------- */
     const legendData = [
-      { label: 'Premium', color: ChartStyles.colors.highlight },
-      { label: 'Intrinsic', color: ChartStyles.colors.intrinsic },
-      { label: 'Time Value', color: ChartStyles.colors.timeValue },
+      { label: 'Premium', color: ChartStyles.colors.timeValue },
     ];
 
     const legendGroup = svg
@@ -121,6 +119,44 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('font-size', ChartStyles.sizes.fontSize.small)
         .text(item.label);
     });
+
+    /* ---------------------------- ヒートマップ凡例 ---------------------------- */
+    const heatLegendWidth = 100;
+    const heatLegendHeight = 8;
+    const heatLegendX = margin.left + innerWidth - heatLegendWidth;
+    const heatLegendY = margin.top - 24;
+    const heatLegendGroup = svg.append('g')
+      .attr('class', 'heatmap-legend')
+      .attr('transform', `translate(${heatLegendX}, ${heatLegendY})`);
+    // 凡例見出し: ヒートマップ強度を表示
+    heatLegendGroup.append('text')
+      .attr('x', 0)
+      .attr('y', -10)
+      .attr('fill', ChartStyles.colors.legendText)
+      .attr('font-size', ChartStyles.sizes.fontSize.small)
+      .text('Proximity to nearest option');
+    const steps = 10;
+    for (let i = 0; i <= steps; i++) {
+      heatLegendGroup.append('rect')
+        .attr('x', i * (heatLegendWidth / steps))
+        .attr('y', 0)
+        .attr('width', heatLegendWidth / steps)
+        .attr('height', heatLegendHeight)
+        .attr('fill', getIntensityColor(i / steps, true));
+    }
+    heatLegendGroup.append('text')
+      .attr('x', 0)
+      .attr('y', heatLegendHeight + 12)
+      .attr('fill', ChartStyles.colors.legendText)
+      .attr('font-size', ChartStyles.sizes.fontSize.small)
+      .text('Low');
+    heatLegendGroup.append('text')
+      .attr('x', heatLegendWidth)
+      .attr('y', heatLegendHeight + 12)
+      .attr('text-anchor', 'end')
+      .attr('fill', ChartStyles.colors.legendText)
+      .attr('font-size', ChartStyles.sizes.fontSize.small)
+      .text('High');
 
     /* ---------------------------- 軸 ---------------------------- */
     chartGroup
@@ -286,13 +322,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         const baseR = volumeScale(d.volume);
         return isRecommend ? baseR + 2 : baseR;
       })
-      .attr('fill', (d) => {
-        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-        const timeVal = Math.max(0, d.markPrice - intrinsic);
-        const totalRisk = timeVal / (d.markPrice || 1);
-        const color = d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put;
-        return totalRisk < 0.3 || totalRisk > 0.7 ? d3.color(color)!.darker(0.5).toString() : color;
-      })
+      .attr('fill', ChartStyles.colors.timeValue)
       .on('mouseover', handleMouseOverPoint)
       .on('mouseout', handleMouseOutPoint)
       .on('click', (event, d) => {
@@ -346,54 +376,9 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .datum(sortedData)
       .attr('class', 'price-line')
       .attr('fill', 'none')
-      .attr('stroke', ChartStyles.colors.highlight)
+      .attr('stroke', ChartStyles.colors.timeValue)
       .attr('stroke-width', ChartStyles.sizes.lineWidth.normal)
       .attr('d', lineGenerator);
-
-    /* ------------------------ 内在価値ライン ------------------------ */
-    const intrinsicData = sortedData.map((d) => {
-      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-      return { ...d, intrinsic };
-    });
-
-    const intrinsicLine = d3
-      .line<typeof intrinsicData[0]>()
-      .x((d) => xScale(d.strike))
-      .y((d) => yScale(d.intrinsic))
-      .curve(d3.curveMonotoneX);
-
-    chartGroup
-      .append('path')
-      .datum(intrinsicData)
-      .attr('class', 'intrinsic-line')
-      .attr('fill', 'none')
-      .attr('stroke', ChartStyles.colors.intrinsic)
-      .attr('stroke-width', ChartStyles.sizes.lineWidth.thin)
-      .attr('stroke-dasharray', '3 3')
-      .attr('d', intrinsicLine);
-
-    /* ------------------------ 時間価値ライン ------------------------ */
-    const timeValueData = sortedData.map((d, i) => {
-      const intrinsic = intrinsicData[i].intrinsic;
-      const timeVal = Math.max(0, d.markPrice - intrinsic);
-      return { ...d, timeVal };
-    });
-
-    const timeValueLine = d3
-      .line<typeof timeValueData[0]>()
-      .x((d) => xScale(d.strike))
-      .y((d) => yScale(d.timeVal))
-      .curve(d3.curveMonotoneX);
-
-    chartGroup
-      .append('path')
-      .datum(timeValueData)
-      .attr('class', 'timevalue-line')
-      .attr('fill', 'none')
-      .attr('stroke', ChartStyles.colors.timeValue)
-      .attr('stroke-width', ChartStyles.sizes.lineWidth.thin)
-      .attr('stroke-dasharray', '4 2')
-      .attr('d', timeValueLine);
 
     /* ---------------------------- 現在価格線 ---------------------------- */
     // 現在価格の横線とラベルは UI 方針により不要のため削除

@@ -76,7 +76,7 @@ export const ChartLegend = ({ chartGroup, dimensions }: ChartLegendProps) => {
 
   for (let i = 0; i < intensityLevels; i++) {
     const intensity = i / (intensityLevels - 1);
-    
+
     intensityLegend.append('rect')
       .attr('x', i * (intensityScaleWidth / intensityLevels))
       .attr('y', 5)
