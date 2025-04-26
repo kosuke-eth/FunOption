@@ -63,7 +63,6 @@ const OptionsVisualization: React.FC = () => {
 
   return (
     <div className="options-visualization-container">
-      <h1 className="main-title">Options Trading Visualization</h1>
 
       {/* Tab Switching */}
       <div className="tabs">
