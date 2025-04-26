@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typechain": "typechain --target ethers-v6 --out-dir src/typechain src/abi/*.json",
-    "test:bybit": "node --loader ts-node/esm src/api/bybitTest.ts"
+    "test:bybit": "node --loader ts-node/esm src/api/bybitTest.ts",
+    "fetch:options": "node src/scripts/fetchBybitOptionData.js"
   },
   "dependencies": {
     "@reown/appkit": "^1.7.2",

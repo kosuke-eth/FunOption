@@ -20,7 +20,7 @@ export interface OptionData {
     isUnderpriced?: boolean;     // プレミアムが理論値より著しく安い
     isOverpriced?: boolean;      // プレミアムが理論値より著しく高い
     hasVolumeSpike?: boolean;    // 取引量が急増している
-    hasOiSpike?: boolean;        // 未決済約定数が急増している
+    hasOiSpike?: boolean;        // 未決済建玉数が急増してている
     hasImbalance?: boolean;      // デルタとプレミアムのバランスが崩れている
   };
 }
@@ -42,7 +42,7 @@ const calculateBuyScore = (option: Partial<OptionData>, currentPrice: number): n
   const distanceScore = Math.max(0, 100 - (distanceFromCurrent / 1000) * 10);
 
   // デルタスコア - 0.3-0.6の範囲が高評価
-  const delta = option.delta; // 型チェックが完了しているので安全
+  const delta = option.delta; // 型チェックが完了していて安全
   const deltaScore = option.type === 'call' ?
     (delta >= 0.3 && delta <= 0.6 ? 100 : 50 * (1 - Math.abs(delta - 0.45) / 0.45)) :
     (Math.abs(delta) >= 0.3 && Math.abs(delta) <= 0.6 ? 100 : 50 * (1 - Math.abs(Math.abs(delta) - 0.45) / 0.45));
@@ -150,38 +150,7 @@ const rawCallOptions = [
   { strike: 120000, markPrice: 420, iv: 45, delta: 0.08, gamma: 0.0025, volume: 210, openInterest: 540, type: 'call' as const, expiry: '2025-06-28', volumeChange: 8, oiChange: 3 },
 ];
 
-// 拡張データ (買い目度スコアなど)を追加
-export const callOptions: OptionData[] = rawCallOptions.map(option => {
-  // 理論価格の計算 (簡略化)
-  const fairPremium = option.delta * Math.abs(option.strike - currentPrice) * 0.1;
-
-  // 買い目度スコア計算
-  const buyScore = calculateBuyScore(option, currentPrice);
-
-  // プレミアム異常値
-  const premiumAnomaly = calculatePremiumAnomaly({
-    ...option,
-    buyScore,
-    fairPremium
-  }, fairPremium);
-
-  // アラートフラグ
-  const alerts = calculateAlerts({
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly
-  }, currentPrice, fairPremium);
-
-  return {
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly,
-    alerts
-  };
-});
-
+// -------- old callOptions/putOptions 定義は削除し、後段で完全版をエクスポート --------
 // プットオプションのモックデータ（複数の満期日に対応）
 const rawPutOptions = [
   // 2025-05-02の満期日データ
@@ -217,49 +186,9 @@ const rawPutOptions = [
   { strike: 120000, markPrice: 26300, iv: 44, delta: -0.95, gamma: 0.0015, volume: 140, openInterest: 360, type: 'put' as const, expiry: '2025-06-28', volumeChange: 8, oiChange: 3 },
 ];
 
-// 拡張データ (買い目度スコアなど)を追加
-export const putOptions: OptionData[] = rawPutOptions.map(option => {
-  // 理論価格の計算 (簡略化)
-  const fairPremium = Math.abs(option.delta) * Math.abs(option.strike - currentPrice) * 0.1;
-
-  // 買い目度スコア計算
-  const buyScore = calculateBuyScore(option, currentPrice);
-
-  // プレミアム異常値
-  const premiumAnomaly = calculatePremiumAnomaly({
-    ...option,
-    buyScore,
-    fairPremium
-  }, fairPremium);
-
-  // アラートフラグ
-  const alerts = calculateAlerts({
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly
-  }, currentPrice, fairPremium);
-
-  return {
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly,
-    alerts
-  };
-});
-
-// 満期日リスト
-export const expirations = [
-  '2025-05-02',
-  '2025-05-31',
-  '2025-06-28',
-  '2025-07-26',
-  '2025-09-27',
-  '2025-12-27',
-  '2026-03-27',
-  '2026-06-26',
-];
+// 満期日リスト: UI正準の満期日リスト
+import { availableExpiryDates } from './bybitOptionData';
+export const expirations = availableExpiryDates;
 
 // Filter presets
 export const filterPresets = [
@@ -303,42 +232,22 @@ function generateMoreExpiryData() {
 // 追加データを生成
 generateMoreExpiryData();
 
-// モックデータのみを使用し、API呼び出しは行わない
+// ----------------- Bybit 実データを取り込み -----------------
+// スクリプト生成ファイルを一括 import し、realCallOptions_xxx / realPutOptions_xxx を追加
+import * as bybitData from './bybitOptionData';
 
-// オプションデータを処理する
-const processedCallOptions = rawCallOptions.map((option) => {
-  const baseOption = option as Partial<OptionData>;
-  const buyScore = calculateBuyScore(baseOption as any, currentPrice);
-  const fairPremium = calculateFairPremium(baseOption as any, currentPrice);
-  const premiumAnomaly = calculatePremiumAnomaly(baseOption as any, fairPremium);
-  return {
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly,
-    alerts: calculateAlerts({...baseOption, buyScore, fairPremium}, currentPrice, fairPremium),
-  } as OptionData;
+Object.entries(bybitData).forEach(([key, value]) => {
+  if (Array.isArray(value)) {
+    if (key.startsWith('realCallOptions_')) {
+      rawCallOptions.push(...(value as any[]));
+    } else if (key.startsWith('realPutOptions_')) {
+      rawPutOptions.push(...(value as any[]));
+    }
+  }
 });
 
-const processedPutOptions = rawPutOptions.map((option) => {
-  const baseOption = option as Partial<OptionData>;
-  const buyScore = calculateBuyScore(baseOption as any, currentPrice);
-  const fairPremium = calculateFairPremium(baseOption as any, currentPrice);
-  const premiumAnomaly = calculatePremiumAnomaly(baseOption as any, fairPremium);
-  return {
-    ...option,
-    buyScore,
-    fairPremium,
-    premiumAnomaly,
-    alerts: calculateAlerts({...baseOption, buyScore, fairPremium}, currentPrice, fairPremium),
-  } as OptionData;
-});
-
-// Bybit APIから取得した実データ (2025-05-02)
-import { realCallOptions_2025_05_02, realPutOptions_2025_05_02 } from './bybitOptionData';
-
-// Bybitの実データを統合
-export const bybitCallOptions = realCallOptions_2025_05_02.map((option: any) => {
+// ----------------- オプションデータを加工 -----------------
+export const callOptions: OptionData[] = rawCallOptions.map((option) => {
   const baseOption = option as Partial<OptionData>;
   const buyScore = calculateBuyScore(baseOption, currentPrice);
   const fairPremium = calculateFairPremium(baseOption, currentPrice);
@@ -348,11 +257,11 @@ export const bybitCallOptions = realCallOptions_2025_05_02.map((option: any) => 
     buyScore,
     fairPremium,
     premiumAnomaly,
-    alerts: calculateAlerts({...baseOption, buyScore, fairPremium}, currentPrice, fairPremium)
+    alerts: calculateAlerts({ ...baseOption, buyScore, fairPremium }, currentPrice, fairPremium),
   } as OptionData;
 });
 
-export const bybitPutOptions = realPutOptions_2025_05_02.map((option: any) => {
+export const putOptions: OptionData[] = rawPutOptions.map((option) => {
   const baseOption = option as Partial<OptionData>;
   const buyScore = calculateBuyScore(baseOption, currentPrice);
   const fairPremium = calculateFairPremium(baseOption, currentPrice);
@@ -362,6 +271,6 @@ export const bybitPutOptions = realPutOptions_2025_05_02.map((option: any) => {
     buyScore,
     fairPremium,
     premiumAnomaly,
-    alerts: calculateAlerts({...baseOption, buyScore, fairPremium}, currentPrice, fairPremium)
+    alerts: calculateAlerts({ ...baseOption, buyScore, fairPremium }, currentPrice, fairPremium),
   } as OptionData;
 });
