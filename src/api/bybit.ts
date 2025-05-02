@@ -6,94 +6,83 @@ const API_KEY = process.env.BYBIT_TESTNET_API_KEY || '';
 const API_SECRET = process.env.BYBIT_TESTNET_PRIVATE_KEY || '';
 const BASE_URL = 'https://api-testnet.bybit.com';
 
-// リクエストに必要な署名を生成する関数
-function getSignature(timestamp: string, queryString: string): string {
-  return createHmac('sha256', API_SECRET)
-    .update(timestamp + API_KEY + queryString)
-    .digest('hex');
+// ---- internal util helpers -------------------------------------------------
+function sign(timestamp: string, payload: string): string {
+  return createHmac('sha256', API_SECRET).update(timestamp + API_KEY + payload).digest('hex');
 }
 
-// 共通のヘッダーを生成する関数
-function getHeaders(queryString: string = ''): HeadersInit {
-  const timestamp = Date.now().toString();
-  const signature = getSignature(timestamp, queryString);
-
+function buildHeaders(payload: string = ''): HeadersInit {
+  const ts = Date.now().toString();
   return {
     'X-BAPI-API-KEY': API_KEY,
-    'X-BAPI-TIMESTAMP': timestamp,
-    'X-BAPI-SIGN': signature,
-    'Content-Type': 'application/json'
+    'X-BAPI-TIMESTAMP': ts,
+    'X-BAPI-SIGN': sign(ts, payload),
+    'Content-Type': 'application/json',
   };
+}
+
+async function request<T>(endpoint: string, options: RequestInit & { qs?: string } = {}): Promise<T> {
+  const { qs = '', method = 'GET', body } = options;
+  const payloadForSig = method === 'GET' ? qs : body ?? '';
+  const headers = buildHeaders(payloadForSig as string);
+  const url = `${BASE_URL}${endpoint}${qs ? `?${qs}` : ''}`;
+
+  const res = await fetch(url, { ...options, method, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${endpoint} failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+// オプション注文用のパラメータ型
+export interface OptionOrderParams {
+  symbol: string;
+  side: 'Buy' | 'Sell';
+  qty: number;
+  price?: number;
+  orderType?: 'Market' | 'Limit';
+  timeInForce?: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
 }
 
 // Bybit APIクライアント
 export const bybitClient = {
   // マーケットデータを取得
   async getMarketData(symbol: string = 'BTCUSDT') {
-    try {
-      const endpoint = '/v5/market/tickers';
-      const queryString = `category=spot&symbol=${symbol}`;
-      const url = `${BASE_URL}${endpoint}?${queryString}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: getHeaders(queryString)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching market data:', error);
-      throw error;
-    }
+    const qs = `category=spot&symbol=${symbol}`;
+    return request('/v5/market/tickers', { qs });
   },
-  
+
   // K線データを取得
   async getKlineData(symbol: string = 'BTCUSDT', interval: string = '1d', limit: number = 200) {
+    const qs = `category=spot&symbol=${symbol}&interval=${interval}&limit=${limit}`;
+    return request('/v5/market/kline', { qs });
+  },
+
+  // アカウント情報を取得
+  async getAccountInfo() {
+    const qs = 'accountType=UNIFIED';
+    return request('/v5/account/wallet-balance', { qs });
+  },
+
+  // オプション注文を発注
+  async createOptionOrder(params: OptionOrderParams) {
     try {
-      const endpoint = '/v5/market/kline';
-      const queryString = `category=spot&symbol=${symbol}&interval=${interval}&limit=${limit}`;
-      const url = `${BASE_URL}${endpoint}?${queryString}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: getHeaders(queryString)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      return await response.json();
+      const endpoint = '/v5/order/create';
+      const body = {
+        category: 'option',
+        symbol: params.symbol,
+        side: params.side,
+        orderType: params.orderType ?? (params.price !== undefined ? 'Limit' : 'Market'),
+        qty: params.qty.toString(),
+        ...(params.price !== undefined ? { price: params.price.toString() } : {}),
+        timeInForce: params.timeInForce ?? 'GTC',
+      };
+      const bodyString = JSON.stringify(body);
+      return request(endpoint, { method: 'POST', body: bodyString });
     } catch (error) {
-      console.error('Error fetching kline data:', error);
+      console.error('Error creating option order:', error);
       throw error;
     }
   },
-  
-  // アカウント情報を取得
-  async getAccountInfo() {
-    try {
-      const endpoint = '/v5/account/wallet-balance';
-      const queryString = 'accountType=UNIFIED';
-      const url = `${BASE_URL}${endpoint}?${queryString}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: getHeaders(queryString)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching account info:', error);
-      throw error;
-    }
-  }
 };

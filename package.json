@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typechain": "typechain --target ethers-v6 --out-dir src/typechain src/abi/*.json",
     "test:bybit": "node --loader ts-node/esm src/api/bybitTest.ts",
-    "fetch:options": "node src/scripts/fetchBybitOptionData.js"
+    "fetch:options": "node src/scripts/fetchBybitOptionData.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@reown/appkit": "^1.7.2",
@@ -48,6 +49,7 @@
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0",
     "vite-plugin-node-polyfills": "^0.23.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^0.34.4"
   }
 }
