@@ -5,6 +5,9 @@ export interface OptionData {
   iv: number;            // インプライド・ボラティリティ (%)
   delta: number;         // デルタ値 (-1.0 ~ 1.0)
   gamma: number;         // ガンマ値
+  theta?: number;        // セータ値
+  bid?: number;          // Bid 価格
+  ask?: number;          // Ask 価格
   volume: number;        // 取引量
   openInterest: number;  // 未決済約定数
   type: 'call' | 'put';  // オプションタイプ
@@ -174,7 +177,7 @@ const rawPutOptions = [
   { strike: 75000, markPrice: 1350, iv: 62, delta: -0.06, gamma: 0.001, volume: 220, openInterest: 580, type: 'put' as const, expiry: '2025-06-28', volumeChange: 20, oiChange: 12 },
   { strike: 80000, markPrice: 2150, iv: 58, delta: -0.12, gamma: 0.002, volume: 320, openInterest: 840, type: 'put' as const, expiry: '2025-06-28', volumeChange: 30, oiChange: 18 },
   { strike: 85000, markPrice: 3500, iv: 55, delta: -0.20, gamma: 0.0025, volume: 380, openInterest: 980, type: 'put' as const, expiry: '2025-06-28', volumeChange: 25, oiChange: 15 },
-  { strike: 90000, markPrice: 5200, iv: 53, delta: -0.32, gamma: 0.003, volume: 450, openInterest: 1150, type: 'put' as const, expiry: '2025-06-28', volumeChange: 35, oiChange: 20 },
+  { strike: 90000, markPrice: 5200, iv: 54, delta: -0.32, gamma: 0.003, volume: 450, openInterest: 1150, type: 'put' as const, expiry: '2025-06-28', volumeChange: 35, oiChange: 20 },
   // プットの「買い目」設定: デルタ高めなのにプレミアムが割安
   { strike: 92500, markPrice: 3900, iv: 52, delta: -0.42, gamma: 0.0035, volume: 510, openInterest: 1280, type: 'put' as const, expiry: '2025-06-28', volumeChange: 65, oiChange: 32 },
   { strike: 95000, markPrice: 6100, iv: 51, delta: -0.52, gamma: 0.004, volume: 480, openInterest: 1180, type: 'put' as const, expiry: '2025-06-28', volumeChange: 28, oiChange: 16 },
@@ -252,8 +255,15 @@ export const callOptions: OptionData[] = rawCallOptions.map((option) => {
   const buyScore = calculateBuyScore(baseOption, currentPrice);
   const fairPremium = calculateFairPremium(baseOption, currentPrice);
   const premiumAnomaly = calculatePremiumAnomaly(baseOption, fairPremium);
+  const spread = option.markPrice * 0.05;
+  const bid = option.markPrice - spread / 2;
+  const ask = option.markPrice + spread / 2;
+  const theta = -Math.abs(option.iv) * 0.001; // 簡易 θ
   return {
     ...option,
+    bid,
+    ask,
+    theta,
     buyScore,
     fairPremium,
     premiumAnomaly,
@@ -266,8 +276,15 @@ export const putOptions: OptionData[] = rawPutOptions.map((option) => {
   const buyScore = calculateBuyScore(baseOption, currentPrice);
   const fairPremium = calculateFairPremium(baseOption, currentPrice);
   const premiumAnomaly = calculatePremiumAnomaly(baseOption, fairPremium);
+  const spread = option.markPrice * 0.05;
+  const bid = option.markPrice - spread / 2;
+  const ask = option.markPrice + spread / 2;
+  const theta = -Math.abs(option.iv) * 0.001;
   return {
     ...option,
+    bid,
+    ask,
+    theta,
     buyScore,
     fairPremium,
     premiumAnomaly,

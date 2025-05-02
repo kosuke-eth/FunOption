@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import OptionsChart from '../OptionsChart/OptionsChart';
+import OptionTradePanel from '../OptionTradePanel';
 import { OptionData } from '../../mockData/optionsMock';
 import { useOptionsData } from '../../providers/OptionsDataProvider';
 import './OptionsVisualization.css';
@@ -34,6 +35,8 @@ const OptionsVisualization: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'call' | 'put'>('call');
   const [filteredOptions, setFilteredOptions] = useState<OptionData[]>([]);
+  const [tradePanelVisible, setTradePanelVisible] = useState<boolean>(false);
+  const [selectedOptionDetail, setSelectedOptionDetail] = useState<OptionData | null>(null);
 
   // 初期化時に最初の満期日を選択
   useEffect(() => {
@@ -56,9 +59,8 @@ const OptionsVisualization: React.FC = () => {
 
   // オプション選択ハンドラー
   const handleOptionSelect = (option: OptionData) => {
-    console.log('Selected option:', option);
-    // ここにBeybitのDeep-Linkへの実際のリダイレクトロジックを実装
-    // window.open(`https://www.bybit.com/trade/usdc-option/...`, '_blank');
+    setSelectedOptionDetail(option);
+    setTradePanelVisible(true);
   };
 
   return (
@@ -129,6 +131,11 @@ const OptionsVisualization: React.FC = () => {
         )}
       </div>
 
+      <OptionTradePanel
+        option={selectedOptionDetail}
+        visible={tradePanelVisible}
+        onClose={() => setTradePanelVisible(false)}
+      />
 
     </div>
   );

@@ -415,17 +415,6 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     <div className="options-chart-container" ref={containerRef}>
       <svg ref={svgRef} width={width} height={height} />
       <div className="tooltip" ref={tooltipRef} />
-      {selectedOption && (
-        <div className="selected-option-info">
-          <h3>Selected Option</h3>
-          <div className="selected-option-details">
-            <span>Strike: {formatCurrency(selectedOption.strike)}</span>
-            <span>Price: {formatCurrency(selectedOption.markPrice)}</span>
-            <span>Δ: {selectedOption.delta.toFixed(2)}</span>
-            <span>Vol: {selectedOption.volume}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

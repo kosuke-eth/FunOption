@@ -90,7 +90,6 @@
   stroke: rgba(19, 20, 27, 0.5);
   stroke-width: 1;
   transition: opacity 0.2s, stroke 0.2s, filter 0.2s;
-  cursor: pointer;
 }
 
 .heatmap-cell:hover {
@@ -157,30 +156,6 @@
   border-radius: 2px;
   font-weight: 600;
   color: #f5a623;
-}
-
-/* Selected option information */
-.selected-option-info {
-  margin-top: 20px;
-  padding: 16px;
-  background-color: #1e1f26;
-  border-radius: 8px;
-  border-left: 4px solid #f5a623;
-  color: #e0e0e0;
-}
-
-.selected-option-info h3 {
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 16px;
-  color: #f5a623;
-}
-
-.selected-option-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
 }
 
 .trade-button {
@@ -273,6 +248,7 @@
 /* データポイントベース */
 .data-point {
   transition: r 0.15s;
+  cursor: pointer;
 }
 
 .data-point.recommend {
