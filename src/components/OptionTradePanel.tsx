@@ -3,6 +3,8 @@ import { OptionData } from '../mockData/optionsMock';
 import { ChartStyles } from './OptionsChart/colorUtils';
 import './OptionTradePanel.css';
 import type { OptionOrderParams, CreateOrderResult } from '../api/bybit';
+import { useSnackbar } from './SnackbarProvider';
+import { useOptionTrades } from 'providers/OptionTradesProvider';
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -33,6 +35,9 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
     return `BTC-${dd}${month}${yy}-${opt.strike}-${typeCode}`;
   };
 
+  const { showSnackbar } = useSnackbar();
+  const { addTrade } = useOptionTrades();
+
   const handleConfirm = async () => {
     if (!option) return;
     setIsSubmitting(true);
@@ -49,18 +54,26 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       const result: CreateOrderResult = await bybitClient.createOptionOrder(params);
       console.log('Order placed result:', result);
       if (result.retCode === 0 && result.result?.orderId) {
-        alert(`Order placed successfully! Order ID: ${result.result.orderId}`);
+        // 保存用のトレード情報を context/localStorage に登録
+        addTrade({
+          orderId: result.result.orderId,
+          symbol: params.symbol,
+          side: params.side,
+          qty: params.qty,
+          price,
+          time: Date.now(),
+        });
+        showSnackbar(`注文成功: ${result.result.orderId}`, 'success');
         onClose();
       } else {
-        // Handle Bybit API error response
-        const errorMsg = result.retMsg || 'Unknown Bybit API error';
+        const errorMsg = result.retMsg || 'Unknown API error';
         console.error('Bybit API Error:', result);
-        alert(`Order failed: ${errorMsg} (Code: ${result.retCode})`);
+        showSnackbar(`注文失敗: ${errorMsg}`, 'error');
       }
     } catch (e: any) {
       console.error('Order failed:', e);
       const message = e.response?.data?.retMsg || e.message || JSON.stringify(e);
-      alert(`Order failed: ${message}`);
+      showSnackbar(`注文失敗: ${message}`, 'error');
     }
     setIsSubmitting(false);
   };
