@@ -58,74 +58,79 @@ const PredictionHistory = () => {
       {/* 탭 네비게이션 */}
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* 요약 정보 */}
-      <div className="grid grid-cols-4 gap-5 my-[60px]">
-        <div className="border p-4 rounded-lg">
-          <p className="text-sm text-surface-on-var">Position value</p>
-          <p className="text-lg font-semibold">
-            {dollarFormatter(totalPosition)}
-          </p>
-        </div>
-        <div className="border p-4 rounded-lg">
-          <p className="text-sm text-surface-on-var">Profit and Loss</p>
-          <p
-            className={`text-lg font-semibold ${
-              totalPnl > 0 ? "text-green" : "text-red-500"
-            }`}
-          >
-            {dollarFormatter(totalPnl)}
-          </p>
-        </div>
-        <div className="border p-4 rounded-lg">
-          <p className="text-sm text-surface-on-var">Volume traded</p>
-          <p className="text-lg font-semibold">{dollarFormatter(totalBet)}</p>
-        </div>
-        <div className="border p-4 rounded-lg">
-          <p className="text-sm text-surface-on-var">
-            # of Prediction{activeTab === "Ended" ? " (Win-Loss)" : ""}
-          </p>
-          <p className="text-lg font-semibold">{items.length}</p>
-        </div>
-      </div>
+      {activeTab === 'Options' ? (
+        <OrderHistory />
+      ) : (
+        <>
+          {/* 요약 정보 */}
+          <div className="grid grid-cols-4 gap-5 my-[60px]">
+            <div className="border p-4 rounded-lg">
+              <p className="text-sm text-surface-on-var">Position value</p>
+              <p className="text-lg font-semibold">
+                {dollarFormatter(totalPosition)}
+              </p>
+            </div>
+            <div className="border p-4 rounded-lg">
+              <p className="text-sm text-surface-on-var">Profit and Loss</p>
+              <p
+                className={`text-lg font-semibold ${
+                  totalPnl > 0 ? "text-green" : "text-red-500"
+                }`}
+              >
+                {dollarFormatter(totalPnl)}
+              </p>
+            </div>
+            <div className="border p-4 rounded-lg">
+              <p className="text-sm text-surface-on-var">Volume traded</p>
+              <p className="text-lg font-semibold">{dollarFormatter(totalBet)}</p>
+            </div>
+            <div className="border p-4 rounded-lg">
+              <p className="text-sm text-surface-on-var">
+                # of Prediction{activeTab === "Ended" ? " (Win-Loss)" : ""}
+              </p>
+              <p className="text-lg font-semibold">{items.length}</p>
+            </div>
+          </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-outline-var">
-          <thead className="font-bold text-sm text-surface-on">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                Prediction
-              </th>
-              {activeTab === "Ended" && (
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  Result
-                </th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                AVG
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                BET
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                VALUE
-              </th>
-              {activeTab === "Live" && (
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  TO WIN
-                </th>
-              )}
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"></th>
-            </tr>
-          </thead>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-outline-var">
+              <thead className="font-bold text-sm text-surface-on">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    Prediction
+                  </th>
+                  {activeTab === "Ended" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      Result
+                    </th>
+                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    AVG
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    BET
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    VALUE
+                  </th>
+                  {activeTab === "Live" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      TO WIN
+                    </th>
+                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"></th>
+                </tr>
+              </thead>
 
-          <tbody className="bg-white divide-y divide-outline-var">
-            {items.map((item) => (
-              <LivePredictionRow key={item.range} prediction={item} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <OrderHistory />
+              <tbody className="bg-white divide-y divide-outline-var">
+                {items.map((item) => (
+                  <LivePredictionRow key={item.range} prediction={item} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 };

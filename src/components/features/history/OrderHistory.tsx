@@ -1,15 +1,21 @@
 import React from 'react';
 import { useOptionOrderHistory } from '../../../providers/OptionOrderHistoryProvider';
+import { useAppKitAccount } from '@reown/appkit/react';
 
 const OrderHistory: React.FC = () => {
   const { history, loading, error, refresh } = useOptionOrderHistory();
+  const { address } = useAppKitAccount();
 
   return (
     <div className="p-4">
       <h2 className="text-2xl font-semibold mb-4">Option Order History</h2>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
-      {!loading && !error && (
+      {!address ? (
+        <p className="text-yellow-500">ウォレットを接続してください</p>
+      ) : loading ? (
+        <p>Loading...</p>
+      ) : error ? (
+        <p className="text-red-500">Error: {error}</p>
+      ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto border-collapse">
             <thead>
@@ -39,7 +45,7 @@ const OrderHistory: React.FC = () => {
           </table>
         </div>
       )}
-      <button onClick={refresh} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Refresh</button>
+      {address && <button onClick={refresh} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Refresh</button>}
     </div>
   );
 };

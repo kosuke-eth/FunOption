@@ -1,4 +1,4 @@
-export type TabType = "Live" | "Ended";
+export type TabType = "Live" | "Ended" | "Options";
 
 interface TabsProps {
   activeTab: TabType;
@@ -28,6 +28,16 @@ export function Tabs({ activeTab, setActiveTab }: TabsProps) {
             onClick={() => setActiveTab("Ended")}
           >
             Ended
+          </button>
+          <button
+            className={`py-2 px-4 font-medium ${
+              activeTab === "Options"
+                ? "border-b-2 border-surface-on text-surface-on"
+                : "text-surface-on-var mb-px"
+            }`}
+            onClick={() => setActiveTab("Options")}
+          >
+            Options
           </button>
         </div>
       </div>

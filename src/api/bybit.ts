@@ -7,16 +7,21 @@ const API_SECRET = process.env.BYBIT_TESTNET_PRIVATE_KEY || '';
 const BASE_URL = 'https://api-testnet.bybit.com';
 
 // ---- internal util helpers -------------------------------------------------
-function sign(timestamp: string, payload: string): string {
-  return createHmac('sha256', API_SECRET).update(timestamp + API_KEY + payload).digest('hex');
+// Include recvWindow in signature string as per Bybit V5 spec
+function sign(timestamp: string, payload: string, recvWindow: string): string {
+  return createHmac('sha256', API_SECRET)
+    .update(timestamp + API_KEY + recvWindow + payload)
+    .digest('hex');
 }
 
-function buildHeaders(payload: string = ''): HeadersInit {
+// Build headers including recvWindow for Bybit V5
+function buildHeaders(payload: string = '', recvWindow: string = '5000'): HeadersInit {
   const ts = Date.now().toString();
   return {
     'X-BAPI-API-KEY': API_KEY,
     'X-BAPI-TIMESTAMP': ts,
-    'X-BAPI-SIGN': sign(ts, payload),
+    'X-BAPI-RECV-WINDOW': recvWindow,
+    'X-BAPI-SIGN': sign(ts, payload, recvWindow),
     'Content-Type': 'application/json',
   };
 }
