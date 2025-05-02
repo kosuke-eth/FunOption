@@ -9,6 +9,7 @@ import { GLOBAL_CONFIG } from "core/configs";
 import { LivePredictionRow } from "./LivePredictionRow";
 import { parsePredictionLogs } from "./parser";
 import { dollarFormatter } from "utils/formatter";
+import OrderHistory from "./OrderHistory";
 
 const PredictionHistory = () => {
   const { address } = useAppKitAccount();
@@ -124,6 +125,7 @@ const PredictionHistory = () => {
           </tbody>
         </table>
       </div>
+      <OrderHistory />
     </div>
   );
 };

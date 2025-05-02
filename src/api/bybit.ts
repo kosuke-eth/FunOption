@@ -1,5 +1,5 @@
 // Node.jsのcryptoモジュールをブラウザ環境でも使用できるようにする
-import { createHmac } from 'node:crypto';
+import { createHmac } from 'crypto';
 
 // Bybit API設定
 const API_KEY = process.env.BYBIT_TESTNET_API_KEY || '';
@@ -57,6 +57,29 @@ export interface CreateOrderResult {
   time: number;
 }
 
+// オプション注文履歴レコード型
+export interface OrderHistoryRecord {
+  orderId: string;
+  symbol: string;
+  side: 'Buy' | 'Sell';
+  price: string;
+  qty: string;
+  orderType: string;
+  timeInForce: string;
+  orderStatus: string;
+  createTime: string;
+}
+
+// オプション注文履歴取得レスポンス型
+export interface GetOrderHistoryResult {
+  retCode: number;
+  retMsg: string;
+  result: {
+    list: OrderHistoryRecord[];
+    nextPageCursor?: string;
+  };
+}
+
 // Bybit APIクライアント
 export const bybitClient = {
   // マーケットデータを取得
@@ -97,4 +120,10 @@ export const bybitClient = {
       throw error;
     }
   },
+
+  // オプション注文履歴を取得
+  async getOptionOrderHistory(symbol?: string): Promise<GetOrderHistoryResult> {
+    const qs = `category=option${symbol ? `&symbol=${symbol}` : ''}`;
+    return request<GetOrderHistoryResult>('/v5/order/history', { qs });
+  }
 };
