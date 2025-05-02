@@ -45,6 +45,18 @@ export interface OptionOrderParams {
   timeInForce?: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
 }
 
+// Bybit API レスポンス型 (注文作成)
+export interface CreateOrderResult {
+  retCode: number;
+  retMsg: string;
+  result: {
+    orderId: string;
+    orderLinkId?: string;
+  };
+  retExtInfo: Record<string, any>; // Use Record<string, any> for unknown object structure
+  time: number;
+}
+
 // Bybit APIクライアント
 export const bybitClient = {
   // マーケットデータを取得
@@ -66,7 +78,7 @@ export const bybitClient = {
   },
 
   // オプション注文を発注
-  async createOptionOrder(params: OptionOrderParams) {
+  async createOptionOrder(params: OptionOrderParams): Promise<CreateOrderResult> {
     try {
       const endpoint = '/v5/order/create';
       const body = {
@@ -79,7 +91,7 @@ export const bybitClient = {
         timeInForce: params.timeInForce ?? 'GTC',
       };
       const bodyString = JSON.stringify(body);
-      return request(endpoint, { method: 'POST', body: bodyString });
+      return request<CreateOrderResult>(endpoint, { method: 'POST', body: bodyString });
     } catch (error) {
       console.error('Error creating option order:', error);
       throw error;

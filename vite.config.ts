@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths(),
       nodePolyfills({
         // Node.jsのcryptoモジュールをブラウザで使用できるようにする
-        include: ['crypto']
+        include: ['crypto', 'stream']
       }),
     ],
     // 環境変数をクライアント側で使用できるようにする

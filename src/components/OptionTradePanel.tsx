@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OptionData } from '../mockData/optionsMock';
 import { ChartStyles } from './OptionsChart/colorUtils';
 import './OptionTradePanel.css';
+import type { OptionOrderParams, CreateOrderResult } from '../api/bybit';
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -13,6 +14,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [lotSize, setLotSize] = useState<number>(0.01);
   const [price, setPrice] = useState<number>(option?.ask ?? option?.markPrice ?? 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sideMultiplier = side === 'buy' ? 1 : -1;
 
@@ -20,6 +22,48 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
   useEffect(() => {
     setPrice(option?.ask ?? option?.markPrice ?? 0);
   }, [option]);
+
+  // Bybit symbol generator e.g., BTC - 31MAY24 - 60000 - C
+  const toBybitSymbol = (opt: OptionData): string => {
+    const [yyyy, mm, dd] = opt.expiry.split('-');
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const month = monthNames[Number(mm) - 1];
+    const yy = yyyy.slice(2);
+    const typeCode = opt.type === 'call' ? 'C' : 'P';
+    return `BTC-${dd}${month}${yy}-${opt.strike}-${typeCode}`;
+  };
+
+  const handleConfirm = async () => {
+    if (!option) return;
+    setIsSubmitting(true);
+    const { bybitClient } = await import('../api/bybit');
+    const params: OptionOrderParams = {
+      symbol: toBybitSymbol(option),
+      side: side === 'buy' ? 'Buy' : 'Sell',
+      qty: lotSize,
+      price,
+      orderType: 'Limit', // Explicitly set Limit order
+      timeInForce: 'GTC',  // Good Till Cancelled
+    };
+    try {
+      const result: CreateOrderResult = await bybitClient.createOptionOrder(params);
+      console.log('Order placed result:', result);
+      if (result.retCode === 0 && result.result?.orderId) {
+        alert(`Order placed successfully! Order ID: ${result.result.orderId}`);
+        onClose();
+      } else {
+        // Handle Bybit API error response
+        const errorMsg = result.retMsg || 'Unknown Bybit API error';
+        console.error('Bybit API Error:', result);
+        alert(`Order failed: ${errorMsg} (Code: ${result.retCode})`);
+      }
+    } catch (e: any) {
+      console.error('Order failed:', e);
+      const message = e.response?.data?.retMsg || e.message || JSON.stringify(e);
+      alert(`Order failed: ${message}`);
+    }
+    setIsSubmitting(false);
+  };
 
   if (!option) return null;
 
@@ -99,9 +143,10 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       <button
         className="confirm-btn"
         style={{ background: side === 'buy' ? ChartStyles.colors.call : ChartStyles.colors.put }}
-        disabled
+        disabled={isSubmitting}
+        onClick={handleConfirm}
       >
-        Confirm (Coming Soon)
+        {isSubmitting ? 'Placing…' : 'Confirm'}
       </button>
     </div>
   );
