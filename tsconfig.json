@@ -2,9 +2,16 @@
   "files": [],
   "compilerOptions": {
     "baseUrl": "./src",
+    "types": [
+      "@project-serum/anchor"
+    ]
   },
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
   ]
 }
