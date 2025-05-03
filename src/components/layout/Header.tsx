@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { useAppKitAccount, useAppKit } from "@reown/appkit/react";
+import '@solana/wallet-adapter-react-ui/styles.css';
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useState } from "react";
@@ -7,8 +8,6 @@ import { useDevnetAirdrop } from "hooks/useDevnetAirdrop";
 import { useUsdcDevFaucet } from "solana/faucet";
 
 export default function Header() {
-  const { address } = useAppKitAccount();
-  const { open } = useAppKit();
   const { connection } = useConnection();
   const { publicKey } = useWallet();
   const [isRequesting, setIsRequesting] = useState(false);
@@ -88,19 +87,11 @@ export default function Header() {
               Faucet
             </a> */}
 
-            {address ? (
-              <appkit-account-button />
-            ) : (
-              <button
-                onClick={() => open()}
-                className="btn-primary"
-              >
-                Connect Wallet
-              </button>
-            )}
+            {/* Solana Wallet Adapter */}
+            <WalletMultiButton className="btn-primary" />
 
             <button
-              disabled={isRequesting}
+              disabled={!publicKey || isRequesting}
               className="btn-ghost"
               onClick={async () => {
                 setIsRequesting(true);
@@ -111,7 +102,7 @@ export default function Header() {
               {isRequesting ? "Airdropping SOL..." : "Request SOL"}
             </button>
             <button
-              disabled={isRequestingUsdc}
+              disabled={!publicKey || isRequestingUsdc}
               className="btn-ghost"
               onClick={async () => {
                 setIsRequestingUsdc(true);
