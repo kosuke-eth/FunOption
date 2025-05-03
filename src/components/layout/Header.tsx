@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAppKitAccount, useAppKit } from "@reown/appkit/react";
-import { useGetSigner } from "utils/useGetSigner";
-import { switchNetwork } from "appkit";
-import { GLOBAL_CONFIG } from "core/configs";
-import { getUSDC } from "core/token";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useState } from "react";
 import { useDevnetAirdrop } from "hooks/useDevnetAirdrop";
 import { useUsdcDevFaucet } from "solana/faucet";
@@ -11,21 +9,13 @@ import { useUsdcDevFaucet } from "solana/faucet";
 export default function Header() {
   const { address } = useAppKitAccount();
   const { open } = useAppKit();
-  const getSigner = useGetSigner();
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
   const [isRequesting, setIsRequesting] = useState(false);
   const [showQRPopover, setShowQRPopover] = useState(false);
   const requestSol = useDevnetAirdrop();
   const requestUsdc = useUsdcDevFaucet();
   const [isRequestingUsdc, setIsRequestingUsdc] = useState(false);
-
-  const reqUSDC = async () => {
-    await switchNetwork(GLOBAL_CONFIG.chainId);
-    setIsRequesting(true);
-    const signer = await getSigner();
-    await getUSDC(GLOBAL_CONFIG.chainId, signer);
-    setIsRequesting(false);
-    window.location.reload();
-  };
 
   return (
     <header className="bg-dark shadow-sm">
@@ -125,6 +115,12 @@ export default function Header() {
               className="btn-ghost"
               onClick={async () => {
                 setIsRequestingUsdc(true);
+                if (publicKey) {
+                  const balance = await connection.getBalance(publicKey);
+                  if (balance < 0.1 * LAMPORTS_PER_SOL) {
+                    await requestSol();
+                  }
+                }
                 await requestUsdc();
                 setIsRequestingUsdc(false);
               }}

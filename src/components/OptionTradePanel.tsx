@@ -5,6 +5,8 @@ import './OptionTradePanel.css';
 import type { OptionOrderParams, CreateOrderResult } from '../api/bybit';
 import { useSnackbar } from './SnackbarProvider';
 import { useOptionTrades } from 'providers/OptionTradesProvider';
+import { useWallet } from "@solana/wallet-adapter-react";
+import { getUsdcDevBalance } from "solana/checkBalance";
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -37,6 +39,14 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
 
   const { showSnackbar } = useSnackbar();
   const { addTrade } = useOptionTrades();
+  const { publicKey } = useWallet();
+  const [usdcBalance, setUsdcBalance] = useState<number>(0);
+
+  useEffect(() => {
+    if (publicKey && visible) {
+      getUsdcDevBalance(publicKey).then(setUsdcBalance);
+    }
+  }, [publicKey, visible]);
 
   const handleConfirm = async () => {
     if (!option) return;
@@ -156,11 +166,12 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       <button
         className="confirm-btn"
         style={{ background: side === 'buy' ? ChartStyles.colors.call : ChartStyles.colors.put }}
-        disabled={isSubmitting}
+        disabled={isSubmitting || usdcBalance < price * lotSize}
         onClick={handleConfirm}
       >
         {isSubmitting ? 'Placing…' : 'Confirm'}
       </button>
+      <div className="mt-2 text-sm">USDC-DEV Balance: {usdcBalance.toFixed(6)}</div>
     </div>
   );
 };

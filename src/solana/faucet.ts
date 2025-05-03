@@ -4,8 +4,8 @@ import { PublicKey } from "@solana/web3.js";
 import { connection } from "./connection";
 import { useWallet } from "@solana/wallet-adapter-react";
 
-const PROGRAM_ID = new PublicKey("4sN8PnN2ki2W4TFXAfzR645FWs8nimmsYeNtxM8RBK6A");
-const MINT       = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
+export const PROGRAM_ID = new PublicKey("4sN8PnN2ki2W4TFXAfzR645FWs8nimmsYeNtxM8RBK6A");
+export const MINT       = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
 
 // USDC-DEV faucet呼び出しフック
 export const useUsdcDevFaucet = () => {
