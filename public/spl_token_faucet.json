@@ -1,0 +1,16 @@
+{
+  "version": "0.1.0",
+  "name": "spl_token_faucet",
+  "instructions": [
+    {
+      "name": "airdrop",
+      "accounts": [
+        { "name": "mint", "isMut": false, "isSigner": false },
+        { "name": "authority", "isMut": false, "isSigner": true }
+      ],
+      "args": [
+        { "name": "amount", "type": "u64" }
+      ]
+    }
+  ]
+}
