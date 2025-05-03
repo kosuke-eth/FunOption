@@ -7,9 +7,10 @@ interface TabsProps {
 
 export function Tabs({ activeTab, setActiveTab }: TabsProps) {
   return (
-    <div className="border-b border-gray-200 mb-6">
-        <div className="flex">
-          <button
+    <div>
+      {/* <div className="border-b border-gray-200 mb-6">
+        <div className="flex"> */}
+      {/* <button
             className={`py-2 px-4 font-medium ${
               activeTab === "Live"
                 ? "border-b-2 border-surface-on text-surface-on"
@@ -18,8 +19,8 @@ export function Tabs({ activeTab, setActiveTab }: TabsProps) {
             onClick={() => setActiveTab("Live")}
           >
             Live
-          </button>
-          <button
+          </button> */}
+      {/* <button
             className={`py-2 px-4 font-medium ${
               activeTab === "Ended"
                 ? "border-b-2 border-surface-on text-surface-on"
@@ -28,18 +29,18 @@ export function Tabs({ activeTab, setActiveTab }: TabsProps) {
             onClick={() => setActiveTab("Ended")}
           >
             Ended
-          </button>
-          <button
-            className={`py-2 px-4 font-medium ${
-              activeTab === "Options"
-                ? "border-b-2 border-surface-on text-surface-on"
-                : "text-surface-on-var mb-px"
+          </button> */}
+      {/* <button
+          className={`py-2 px-4 font-medium ${activeTab === "Options"
+              ? "border-b-2 border-surface-on text-surface-on"
+              : "text-surface-on-var mb-px"
             }`}
-            onClick={() => setActiveTab("Options")}
-          >
-            Options
-          </button>
-        </div>
-      </div>
+          onClick={() => setActiveTab("Options")}
+        >
+          Options
+        </button> */}
+      {/* </div>
+      </div > */}
+    </div >
   );
 }
