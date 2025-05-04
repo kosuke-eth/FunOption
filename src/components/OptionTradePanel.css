@@ -1,25 +1,26 @@
-.option-trade-panel {
+.option-trade-overlay {
   position: fixed;
   top: 0;
-  right: -400px;
-  width: 360px;
-  height: 100%;
-  background: #1b1c24;
-  color: #fff;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.4);
-  transition: right 0.3s ease;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  flex-direction: column;
-  padding: 16px;
+  align-items: center;
+  justify-content: center;
   z-index: 1000;
 }
 
-.option-trade-panel.visible {
-  right: 0;
-}
-
-.option-trade-panel button {
-  border-radius: 0.5rem;
+.option-trade-panel {
+  width: 360px;
+  max-width: 90%;
+  background: #1b1c24;
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 20px;
+  border-radius: 8px;
 }
 
 .panel-header {
