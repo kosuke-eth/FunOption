@@ -39,47 +39,47 @@ export default function Header() {
               {/* QR 코드 팝오버 */}
               {showQRPopover && (
                 <div className="fixed right-8 top-8 bg-dark rounded-2xl overflow-hidden shadow-lg z-50 w-[280px]">
-                <div className="absolute top-2 right-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowQRPopover(false);
-                    }}
-                    className="text-gray-500 hover:text-gray-700 bg-dark rounded-full p-1"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  <div className="absolute top-2 right-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowQRPopover(false);
+                      }}
+                      className="text-gray-500 hover:text-gray-700 bg-dark rounded-full p-1"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
 
-                <div
-                  onClick={() =>
-                    window.open(
-                      "https://discord.com/invite/sWgxD22FdQ",
-                      "_blank"
-                    )
-                  }
-                  className="cursor-pointer"
-                >
-                  <img
-                    src="/images/qrs.png"
-                    alt="qrcodes"
-                    className="w-full h-full object-contain -mr-4"
-                  />
+                  <div
+                    onClick={() =>
+                      window.open(
+                        "https://discord.com/invite/sWgxD22FdQ",
+                        "_blank"
+                      )
+                    }
+                    className="cursor-pointer"
+                  >
+                    <img
+                      src="/images/qrs.png"
+                      alt="qrcodes"
+                      className="w-full h-full object-contain -mr-4"
+                    />
+                  </div>
                 </div>
-              </div>
               )}
             </div>
 
@@ -90,7 +90,7 @@ export default function Header() {
             {/* Solana Wallet Adapter */}
             <WalletMultiButton className="btn-primary" />
 
-            <button
+            {/* <button
               disabled={!publicKey || isRequesting}
               className="btn-ghost"
               onClick={async () => {
@@ -100,7 +100,7 @@ export default function Header() {
               }}
             >
               {isRequesting ? "Airdropping SOL..." : "Request SOL"}
-            </button>
+            </button> */}
             <button
               disabled={!publicKey || isRequestingUsdc}
               className="btn-ghost"
@@ -116,7 +116,7 @@ export default function Header() {
                 setIsRequestingUsdc(false);
               }}
             >
-              {isRequestingUsdc ? "Minting USDC..." : "Request USDC-DEV"}
+              {isRequestingUsdc ? "Minting USDC..." : "Request USDC"}
             </button>
           </div>
         </div>
