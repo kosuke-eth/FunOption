@@ -48,9 +48,9 @@ export const ChartStyles = {
       thick: 2     // 太い線
     },
     pointRadius: {
-      small: 3,  // 小さいポイント
-      normal: 4, // 標準ポイント
-      large: 6   // 大きいポイント
+      small: 5,  // 小さいポイント
+      normal: 7, // 標準ポイント
+      large: 9   // 大きいポイント
     },
     dataPoint: {
       normal: 3,  // 標準データポイントサイズ

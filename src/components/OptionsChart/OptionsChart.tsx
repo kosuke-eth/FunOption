@@ -258,18 +258,36 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     }
 
     /* ---------------------------- データポイント ---------------------------- */
-    // hover state helpers
+    // Poor RRを除外
+    const isPoorRR = (d: OptionData) => {
+      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+      const timeValPct = ((Math.max(0, d.markPrice - intrinsic) / d.markPrice) * 100);
+      const rrRaw = (Math.abs(d.delta) * 100 - timeValPct);
+      return rrRaw < -10;
+    };
+
+    // ユーザー向けにポイントを絞り込み: 現在価格±20%以内かつ出来高上位30件
+    const filteredData = data
+      .filter((d) => Math.abs(d.strike - currentPrice) / currentPrice < 0.2)
+      .filter((d) => !isPoorRR(d))
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 15);
+
+    // hover state helpers (先に定義して後で使用)
     const handleMouseOverPoint = (event: any, d: OptionData) => {
       if (!containerRef.current) return;
-      // highlight same strike points
+      const hoveredElement = d3.select(event.target);
       chartGroup
         .selectAll<SVGCircleElement, OptionData>('.data-point')
-        .classed('dimmed', (p) => p.strike !== d.strike)
-        .classed('highlight', (p) => p.strike === d.strike);
+        .transition()
+        .duration(150)
+        .attr('opacity', (p) => (p === d ? 1 : 0.3))
+        .attr('stroke', (p) => (p === d ? 'white' : 'none'))
+        .attr('stroke-width', (p) => (p === d ? 2 : 0))
+        .attr('r', (p) => (p === d ? volumeScale(p.volume) * 1.5 : volumeScale(p.volume))); // ホバー点を1.5倍に
 
       const [x, y] = d3.pointer(event, containerRef.current);
-      const tooltipSel = d3
-        .select(tooltipRef.current)
+      d3.select(tooltipRef.current)
         .style('display', 'block')
         .style('left', `${x + 10}px`)
         .style('top', `${y - 10}px`)
@@ -277,9 +295,47 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     };
 
     const handleMouseOutPoint = () => {
-      chartGroup.selectAll('.data-point').classed('dimmed highlight', false);
+      chartGroup
+        .selectAll<SVGCircleElement, OptionData>('.data-point')
+        .transition()
+        .duration(150)
+        .attr('opacity', 1)
+        .attr('stroke', 'none')
+        .attr('stroke-width', 0)
+        .attr('r', (p) => volumeScale(p.volume)); // 元のサイズに戻す
+
       d3.select(tooltipRef.current).style('display', 'none');
     };
+
+    // ボリュームスケール（円サイズに反映）
+    const maxVolume = d3.max(filteredData, (d) => d.volume) || 1;
+    const volumeScale = d3
+      .scaleSqrt<number, number>()
+      .domain([0, maxVolume])
+      .range([ChartStyles.sizes.pointRadius.small, ChartStyles.sizes.pointRadius.large]);
+
+    chartGroup
+      .selectAll('.data-point')
+      .data(filteredData)
+      .enter()
+      .append('circle')
+      .attr('class', (d) => {
+        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
+        const timeVal = Math.max(0, d.markPrice - intrinsic);
+        const totalRisk = timeVal / (d.markPrice || 1);
+        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
+        return isRecommend ? 'data-point clickable' : 'data-point';
+      })
+      .attr('cx', (d) => xScale(d.strike))
+      .attr('cy', (d) => yScale(d.markPrice))
+      .attr('r', (d) => volumeScale(d.volume)) // 初期半径
+      .attr('fill', ChartStyles.colors.timeValue)
+      .on('mouseover', handleMouseOverPoint)
+      .on('mouseout', handleMouseOutPoint)
+      .on('click', (event, d) => {
+        setSelectedOption(d);
+        onOptionSelect?.(d);
+      });
 
     const makeTooltipHtml = (d: OptionData) => {
       const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
@@ -296,42 +352,8 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         <div class="tooltip-rr">${rrBadge}</div>`;
     };
 
-    // ボリュームスケール（円サイズに反映）
-    const maxVolume = d3.max(data, (d) => d.volume) || 1;
-    const volumeScale = d3.scaleSqrt<number, number>().domain([0, maxVolume]).range([ChartStyles.sizes.pointRadius.small, ChartStyles.sizes.pointRadius.large]);
-
-    chartGroup
-      .selectAll('.data-point')
-      .data(data)
-      .enter()
-      .append('circle')
-      .attr('class', (d) => {
-        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-        const timeVal = Math.max(0, d.markPrice - intrinsic);
-        const totalRisk = timeVal / (d.markPrice || 1);
-        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
-        return isRecommend ? 'data-point recommend' : 'data-point';
-      })
-      .attr('cx', (d) => xScale(d.strike))
-      .attr('cy', (d) => yScale(d.markPrice))
-      .attr('r', (d) => {
-        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-        const timeVal = Math.max(0, d.markPrice - intrinsic);
-        const totalRisk = timeVal / (d.markPrice || 1);
-        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
-        const baseR = volumeScale(d.volume);
-        return isRecommend ? baseR + 2 : baseR;
-      })
-      .attr('fill', ChartStyles.colors.timeValue)
-      .on('mouseover', handleMouseOverPoint)
-      .on('mouseout', handleMouseOutPoint)
-      .on('click', (event, d) => {
-        setSelectedOption(d);
-        onOptionSelect?.(d);
-      });
-
     // 推奨オプションの円を最前面に移動
-    chartGroup.selectAll('.recommend').raise();
+    chartGroup.selectAll('.clickable').raise();
 
     /* --------- デルタ帯を示すガイドライン (0.25 / 0.50 / 0.75) --------- */
     const deltaThresholds = [0.25, 0.5, 0.75];
