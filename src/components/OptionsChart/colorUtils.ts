@@ -33,7 +33,7 @@ export const ChartStyles = {
     put: '#FF4A91',       // プットオプションの色
     legendText: '#c9c9d0', // 凡例テキストの色
     intrinsic: '#F5A623',  // 内在価値ライン色 (オレンジ)
-    timeValue: '#00C49A',  // 時間価値ライン色 (グリーン)
+    timeValue: '#FFD54F',  // 時間価値ライン色 (ゴールド)
     recommend: '#FFD700', // 推奨オプションハイライト
   },
   sizes: {
