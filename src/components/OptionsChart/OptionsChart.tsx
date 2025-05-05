@@ -57,6 +57,9 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     const innerWidth = containerWidth - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
+    // Tooltip delay timer
+    let tooltipTimeout: number | null = null;
+
     // スケール
     const xScale = d3
       .scaleLinear()
@@ -223,7 +226,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           .attr('width', cellW)
           .attr('height', cellH)
           .attr('fill', getIntensityColor(intensity, true))
-          .attr('opacity', intensity * 0.4) // α 0.4 までに抑える
+          .attr('opacity', intensity * 0.35) // α 0.35 にさらに抑える
           .style('pointer-events', 'none')  // 点だけに Hover / Click を通す
           .attr('stroke-width', 0)
           .datum<OptionData | null>(closest);
@@ -233,25 +236,31 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           .on('mouseover', (event, d: OptionData | null) => {
             if (!containerRef.current) return;
             const [x, y] = d3.pointer(event, containerRef.current);
-            const tooltipSel = d3
-              .select(tooltipRef.current)
-              .style('display', 'block')
-              .style('left', `${x + 10}px`)
-              .style('top', `${y - 10}px`);
+            tooltipTimeout = window.setTimeout(() => {
+              const tooltipSel = d3
+                .select(tooltipRef.current)
+                .style('display', 'block')
+                .style('left', `${x + 10}px`)
+                .style('top', `${y - 10}px`);
 
-            if (d) {
-              tooltipSel.html(
-                `<div class="tooltip-strike">Strike: ${formatCurrency(
-                  d.strike,
-                )}</div><div class="tooltip-price">Price: ${formatCurrency(
-                  d.markPrice,
-                )}</div>`,
-              );
-            } else {
-              tooltipSel.html('<div>No data</div>');
-            }
+              if (d) {
+                tooltipSel.html(
+                  `<div class="tooltip-strike">Strike: ${formatCurrency(
+                    d.strike,
+                  )}</div><div class="tooltip-price">Price: ${formatCurrency(
+                    d.markPrice,
+                  )}</div>`,
+                );
+              } else {
+                tooltipSel.html('<div>No data</div>');
+              }
+            }, 250);
           })
           .on('mouseout', () => {
+            if (tooltipTimeout) {
+              clearTimeout(tooltipTimeout);
+              tooltipTimeout = null;
+            }
             d3.select(tooltipRef.current).style('display', 'none');
           });
       }
@@ -276,6 +285,9 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     // hover state helpers (先に定義して後で使用)
     const handleMouseOverPoint = (event: any, d: OptionData) => {
       if (!containerRef.current) return;
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+      }
       const hoveredElement = d3.select(event.target);
       chartGroup
         .selectAll<SVGCircleElement, OptionData>('.data-point')
@@ -287,11 +299,19 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('r', (p) => (p === d ? volumeScale(p.volume) * 1.5 : volumeScale(p.volume))); // ホバー点を1.5倍に
 
       const [x, y] = d3.pointer(event, containerRef.current);
-      d3.select(tooltipRef.current)
-        .style('display', 'block')
-        .style('left', `${x + 10}px`)
-        .style('top', `${y - 10}px`)
-        .html(makeTooltipHtml(d));
+      tooltipTimeout = window.setTimeout(() => {
+        const tooltipSel = d3
+          .select(tooltipRef.current)
+          .style('display', 'block')
+          .style('left', `${x + 10}px`)
+          .style('top', `${y - 10}px`);
+
+        if (d) {
+          tooltipSel.html(makeTooltipHtml(d));
+        } else {
+          tooltipSel.html('<div>No data</div>');
+        }
+      }, 250);
     };
 
     const handleMouseOutPoint = () => {
@@ -304,6 +324,10 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('stroke-width', 0)
         .attr('r', (p) => volumeScale(p.volume)); // 元のサイズに戻す
 
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = null;
+      }
       d3.select(tooltipRef.current).style('display', 'none');
     };
 
@@ -312,7 +336,10 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     const volumeScale = d3
       .scaleSqrt<number, number>()
       .domain([0, maxVolume])
-      .range([ChartStyles.sizes.pointRadius.small, ChartStyles.sizes.pointRadius.large]);
+      .range([
+        ChartStyles.sizes.pointRadius.small + 2,
+        ChartStyles.sizes.pointRadius.large + 2,
+      ]);
 
     chartGroup
       .selectAll('.data-point')
@@ -337,7 +364,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           ? 'drop-shadow(0 0 6px rgba(16,185,129,0.65))'
           : 'drop-shadow(0 0 6px rgba(239,68,68,0.65))',
       )
-      .style('animation-delay', () => `${(Math.random() * 2.4).toFixed(2)}s`)
+      .style('animation-delay', (d) => `${((d.volume / maxVolume) * 2.4).toFixed(2)}s`)
       .attr('aria-label', (d) =>
         `${d.type === 'call' ? 'Call' : 'Put'} ${d.strike}K, Δ ${d.delta.toFixed(2)}, price ${formatCurrency(d.markPrice)}`,
       )
@@ -412,6 +439,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('fill', 'none')
       .attr('stroke', ChartStyles.colors.timeValue)
       .attr('stroke-width', ChartStyles.sizes.lineWidth.normal)
+      .attr('stroke-opacity', 0.8)
       .attr('d', lineGenerator);
 
     /* ---------------------------- 現在価格線 ---------------------------- */
