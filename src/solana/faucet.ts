@@ -14,8 +14,8 @@ export const useUsdcDevFaucet = () => {
 
   const requestUsdc = async (amount: number = 100) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
-      console.error("ウォレットが接続されていません");
-      alert("ウォレットが接続されていません");
+      console.error("Wallet not connected");
+      alert("Wallet not connected");
       return;
     }
 
@@ -78,7 +78,7 @@ export const useUsdcDevFaucet = () => {
           alert(`Detailed Logs:\n${detailedLogs.substring(0, 300)}${detailedLogs.length > 300 ? '...' : ''}`); // アラートが長くなりすぎないように制限
         }
       } else if (error instanceof Error && error.name.includes("Wallet")) {
-        alert(`トランザクション署名に失敗しました: ${error.message}`);
+        alert(`Transaction signing failed: ${error.message}`);
       } else {
         alert(`Airdrop failed: ${error instanceof Error ? error.message : String(error)}`);
       }

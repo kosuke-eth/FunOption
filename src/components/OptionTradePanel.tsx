@@ -73,17 +73,17 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           price,
           time: Date.now(),
         });
-        showSnackbar(`注文成功: ${result.result.orderId}`, 'success');
+        showSnackbar(`Order successful: ${result.result.orderId}`, 'success');
         onClose();
       } else {
         const errorMsg = result.retMsg || 'Unknown API error';
         console.error('Bybit API Error:', result);
-        showSnackbar(`注文失敗: ${errorMsg}`, 'error');
+        showSnackbar(`Order failed: ${errorMsg}`, 'error');
       }
     } catch (e: any) {
       console.error('Order failed:', e);
       const message = e.response?.data?.retMsg || e.message || JSON.stringify(e);
-      showSnackbar(`注文失敗: ${message}`, 'error');
+      showSnackbar(`Order failed: ${message}`, 'error');
     }
     setIsSubmitting(false);
   };

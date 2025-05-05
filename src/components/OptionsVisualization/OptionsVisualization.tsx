@@ -15,7 +15,7 @@ const formatExpiryDate = (dateStr: string): string => {
     }
     return dateStr;
   } catch (err) {
-    console.error('日付のフォーマットエラー:', dateStr);
+    console.error('Date formatting error:', dateStr);
     return dateStr || 'Invalid Date';
   }
 };
@@ -111,7 +111,7 @@ const OptionsVisualization: React.FC = () => {
               {formattedDate}
             </button>
           );
-        }) : <span className="no-data-message">満期日データ読込中...</span>}
+        }) : <span className="no-data-message">Loading expiration date data...</span>}
       </div>
 
       {/* Options Chart */}
@@ -126,7 +126,7 @@ const OptionsVisualization: React.FC = () => {
           />
         ) : (
           <div className="no-data-container">
-            <p>表示するデータがありません。別の満期日を選択してください。</p>
+            <p>No data to display. Please select a different expiration date.</p>
           </div>
         )}
       </div>

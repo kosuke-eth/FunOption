@@ -17,9 +17,9 @@ export const getCurrentBTCPrice = async (): Promise<number> => {
     if (response.data.retCode === 0 && response.data.result.list.length > 0) {
       return parseFloat(response.data.result.list[0].lastPrice);
     }
-    throw new Error('BTCの価格情報が取得できませんでした');
+    throw new Error('Failed to retrieve BTC price information');
   } catch (error) {
-    console.error('BTCの価格取得中にエラーが発生しました:', error);
+    console.error('An error occurred while fetching BTC price:', error);
     throw error;
   }
 };
@@ -36,7 +36,7 @@ export const getAllOptions = async (): Promise<{ calls: OptionData[], puts: Opti
     
     // 最初の満期日のオプションを取得 (デフォルト表示用)
     if (expirations.length === 0) {
-      throw new Error('満期日のデータがありません');
+      throw new Error('No expiration date data available');
     }
     
     const options = await getOptionsByExpiry(expirations[0]);
@@ -52,7 +52,7 @@ export const getAllOptions = async (): Promise<{ calls: OptionData[], puts: Opti
       currentPrice
     };
   } catch (error) {
-    console.error('オプションデータの取得中にエラーが発生しました:', error);
+    console.error('An error occurred while fetching option data:', error);
     throw error;
   }
 };
@@ -75,9 +75,9 @@ export const getExpiryDates = async (): Promise<string[]> => {
       
       return expiryDates;
     }
-    throw new Error('満期日情報が取得できませんでした');
+    throw new Error('Failed to retrieve expiration date information');
   } catch (error) {
-    console.error('満期日取得中にエラーが発生しました:', error);
+    console.error('An error occurred while fetching expiration dates:', error);
     throw error;
   }
 };
@@ -95,7 +95,7 @@ export const getOptionsByExpiry = async (expiry: string): Promise<OptionData[]> 
     });
 
     if (instrumentsResponse.data.retCode !== 0) {
-      throw new Error('オプション情報が取得できませんでした');
+      throw new Error('Failed to retrieve option information');
     }
 
     const instruments = instrumentsResponse.data.result.list;
@@ -109,7 +109,7 @@ export const getOptionsByExpiry = async (expiry: string): Promise<OptionData[]> 
     });
 
     if (tickersResponse.data.retCode !== 0) {
-      throw new Error('オプション価格情報が取得できませんでした');
+      throw new Error('Failed to retrieve option price information');
     }
 
     const tickers = tickersResponse.data.result.list;
@@ -190,7 +190,7 @@ export const getOptionsByExpiry = async (expiry: string): Promise<OptionData[]> 
     // オプションデータを拡張（買い目度スコアなど）
     return enhanceOptionsData(options, currentPrice);
   } catch (error) {
-    console.error('オプションデータ取得中にエラーが発生しました:', error);
+    console.error('An error occurred while fetching option data:', error);
     throw error;
   }
 };
@@ -212,7 +212,7 @@ const calculatePremiumAnomaly = (option: { markPrice: number, fairPremium?: numb
     // -100～100の範囲にスケール
     return Math.max(-100, Math.min(100, anomalyRatio * 100));
   } catch (error) {
-    console.error('プレミアム異常値計算中のエラー:', error);
+    console.error('Error calculating premium anomaly:', error);
     return 0; // エラーの場合は異常なしとして返す
   }
 };
@@ -255,7 +255,7 @@ const enhanceOptionsData = (options: OptionData[], currentPrice: number): Option
 
       return Math.round(totalScore);
     } catch (error) {
-      console.error('購入目度計算中のエラー:', error);
+      console.error('Error calculating buy score:', error);
       return 50; // エラーの場合は中間値を返す
     }
   };
@@ -304,7 +304,7 @@ const enhanceOptionsData = (options: OptionData[], currentPrice: number): Option
         alerts
       };
     } catch (error) {
-      console.error('オプションデータの処理中にエラーが発生しました:', error);
+      console.error('An error occurred while processing option data:', error);
       // エラー発生時は、最小限のデータを返す
       return {
         ...option,
