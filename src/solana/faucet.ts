@@ -8,13 +8,13 @@ import { SYSVAR_RENT_PUBKEY, SystemProgram } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const PROGRAM_ID = new PublicKey("4sN8PnN2ki2W4TFXAfzR645FWs8nimmsYeNtxM8RBK6A");
-export const MINT       = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
+export const MINT = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
 
 // USDC-DEV faucet呼び出しフック
 export const useUsdcDevFaucet = () => {
   const wallet = useWallet();
 
-  const requestUsdc = async (amount: number = 100) => {
+  const requestUsdc = async (amount: number = 1000000) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       console.error("Wallet not connected");
       alert("Wallet not connected");

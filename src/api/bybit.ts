@@ -2,16 +2,22 @@
 import { createHmac } from 'crypto';
 
 // Bybit API設定
-const API_KEY = process.env.BYBIT_TESTNET_API_KEY || '';
-const API_SECRET = process.env.BYBIT_TESTNET_PRIVATE_KEY || '';
+// Viteではprocess.envではなくimport.meta.envを使用
+const API_KEY = import.meta.env.VITE_BYBIT_TESTNET_API_KEY || '';
+const API_SECRET = import.meta.env.VITE_BYBIT_TESTNET_API_SECRET || '';
 const BASE_URL = 'https://api-testnet.bybit.com';
 
 // ---- internal util helpers -------------------------------------------------
 // Include recvWindow in signature string as per Bybit V5 spec
 function sign(timestamp: string, payload: string, recvWindow: string): string {
-  return createHmac('sha256', API_SECRET)
-    .update(timestamp + API_KEY + recvWindow + payload)
+  // API_SECRETにはBybitから提供された文字列シークレットが設定されている必要がある
+  const stringToSign = timestamp + API_KEY + recvWindow + payload;
+  console.log('String to sign:', stringToSign); // 署名対象文字列をログ出力
+  const signature = createHmac('sha256', API_SECRET)
+    .update(stringToSign)
     .digest('hex');
+  console.log('Generated Signature:', signature); // 生成された署名をログ出力
+  return signature;
 }
 
 // Build headers including recvWindow for Bybit V5
@@ -132,3 +138,7 @@ export const bybitClient = {
     return request<GetOrderHistoryResult>('/v5/order/history', { qs });
   }
 };
+
+if (!API_KEY || !API_SECRET) {
+  throw new Error('API_KEY or API_SECRET is not set');
+}
