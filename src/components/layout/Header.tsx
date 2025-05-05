@@ -18,7 +18,7 @@ export default function Header() {
 
   return (
     <header className="bg-dark shadow-sm">
-      <nav className="max-w-7xl px-6 mx-auto">
+      <nav className="max-w-6xl mx-auto">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
             <Link
@@ -83,24 +83,9 @@ export default function Header() {
               )}
             </div>
 
-            {/* <a href="https://citrea.xyz/faucet" className="text-gray-800">
-              Faucet
-            </a> */}
-
             {/* Solana Wallet Adapter */}
             <WalletMultiButton className="btn-primary" />
 
-            {/* <button
-              disabled={!publicKey || isRequesting}
-              className="btn-ghost"
-              onClick={async () => {
-                setIsRequesting(true);
-                await requestSol();
-                setIsRequesting(false);
-              }}
-            >
-              {isRequesting ? "Airdropping SOL..." : "Request SOL"}
-            </button> */}
             <button
               disabled={!publicKey || isRequestingUsdc}
               className="btn-ghost"
