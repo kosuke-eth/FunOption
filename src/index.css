@@ -1,3 +1,19 @@
+:root {
+  /* グローバルボタントークン */
+  --button-border-radius: 8px;
+  --button-height: 2.5rem;
+  --button-min-width: 112px;
+  --button-padding-x: 1rem;
+}
+
+button {
+  border-radius: var(--button-border-radius);
+  height: var(--button-height);
+  min-width: var(--button-min-width);
+  padding-left: var(--button-padding-x);
+  padding-right: var(--button-padding-x);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -21,20 +21,20 @@ export function getIntensityColor(value: number, isBackground: boolean = false):
  */
 export const ChartStyles = {
   colors: {
-    background: '#13141b', // 全体背景色
-    gridLine: '#2a2b3a',  // グリッド線の色
-    axis: '#8e8ea0',      // 軸の色
-    axisLabel: '#c9c9d0',  // 軸ラベルの色
-    label: '#c9c9d0',     // ラベルの色
-    currentPrice: '#e0b84d', // 現在価格線の色
-    highlight: '#4A91FF', // ハイライト色
-    tooltip: '#f1f1f2',   // ツールチップのテキスト色
-    call: '#00C49A',      // コールオプションの色
-    put: '#FF4A91',       // プットオプションの色
-    legendText: '#c9c9d0', // 凡例テキストの色
-    intrinsic: '#F5A623',  // 内在価値ライン色 (オレンジ)
-    timeValue: '#FFD54F',  // 時間価値ライン色 (ゴールド)
-    recommend: '#FFD700', // 推奨オプションハイライト
+    background: '#1A1A1C', // コアパレット: 背景
+    gridLine: '#3F3F46',  // コアパレット: 枠線
+    axis: '#F4F4F5',      // コアパレット: テキスト
+    axisLabel: '#F4F4F5',  // コアパレット: テキスト
+    label: '#F4F4F5',     // コアパレット: テキスト
+    currentPrice: '#8B5CF6', // アクセント
+    highlight: '#8B5CF6', // アクセント
+    tooltip: '#F4F4F5',   // テキスト
+    call: '#10B981',      // Call オプション
+    put: '#EF4444',       // Put オプション
+    legendText: '#F4F4F5', // テキスト
+    intrinsic: '#8B5CF6',  // アクセント
+    timeValue: '#8B5CF6',  // アクセント
+    recommend: '#8B5CF6',  // アクセント
   },
   sizes: {
     fontSize: {
@@ -61,7 +61,7 @@ export const ChartStyles = {
       medium: 1.5, // 中間の線
       thick: 2     // 太い線
     },
-    borderRadius: 4, // 全体の角丸半径
+    borderRadius: 8, // 8px ラウンドで統一
   },
   // 強度に基づく色を返す関数
   getIntensityColor: function (intensity: number) {

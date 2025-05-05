@@ -95,10 +95,10 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       { label: 'Premium', color: ChartStyles.colors.timeValue },
     ];
 
-    const legendGroup = svg
+    const legendGroup = chartGroup
       .append('g')
       .attr('class', 'legend')
-      .attr('transform', `translate(${margin.left}, ${margin.top - 24})`);
+      .attr('transform', `translate(0, -40)`);
 
     legendData.forEach((item, i) => {
       const g = legendGroup.append('g').attr('transform', `translate(${i * 120}, 0)`);
@@ -121,17 +121,16 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     });
 
     /* ---------------------------- ヒートマップ凡例 ---------------------------- */
-    const heatLegendWidth = 100;
+    const heatLegendWidth = 120;
     const heatLegendHeight = 8;
-    const heatLegendX = margin.left + innerWidth - heatLegendWidth;
-    const heatLegendY = margin.top - 24;
-    const heatLegendGroup = svg.append('g')
+    const heatLegendGroup = chartGroup
+      .append('g')
       .attr('class', 'heatmap-legend')
-      .attr('transform', `translate(${heatLegendX}, ${heatLegendY})`);
+      .attr('transform', `translate(0, ${innerHeight + 20})`);
     // 凡例見出し: ヒートマップ強度を表示
     heatLegendGroup.append('text')
       .attr('x', 0)
-      .attr('y', -10)
+      .attr('y', 20)
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
       .text('Proximity to nearest option');
@@ -139,20 +138,20 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     for (let i = 0; i <= steps; i++) {
       heatLegendGroup.append('rect')
         .attr('x', i * (heatLegendWidth / steps))
-        .attr('y', 0)
+        .attr('y', 30)
         .attr('width', heatLegendWidth / steps)
         .attr('height', heatLegendHeight)
         .attr('fill', getIntensityColor(i / steps, true));
     }
     heatLegendGroup.append('text')
       .attr('x', 0)
-      .attr('y', heatLegendHeight + 12)
+      .attr('y', heatLegendHeight + 40)
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
       .text('Low');
     heatLegendGroup.append('text')
       .attr('x', heatLegendWidth)
-      .attr('y', heatLegendHeight + 12)
+      .attr('y', heatLegendHeight + 40)
       .attr('text-anchor', 'end')
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
@@ -224,7 +223,8 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           .attr('width', cellW)
           .attr('height', cellH)
           .attr('fill', getIntensityColor(intensity, true))
-          .attr('opacity', intensity)
+          .attr('opacity', intensity * 0.4) // α 0.4 までに抑える
+          .style('pointer-events', 'none')  // 点だけに Hover / Click を通す
           .attr('stroke-width', 0)
           .datum<OptionData | null>(closest);
 
@@ -329,7 +329,19 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('cx', (d) => xScale(d.strike))
       .attr('cy', (d) => yScale(d.markPrice))
       .attr('r', (d) => volumeScale(d.volume)) // 初期半径
-      .attr('fill', ChartStyles.colors.timeValue)
+      .attr('fill', (d) => (d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put))
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 2.5)
+      .style('filter', (d) =>
+        d.type === 'call'
+          ? 'drop-shadow(0 0 6px rgba(16,185,129,0.65))'
+          : 'drop-shadow(0 0 6px rgba(239,68,68,0.65))',
+      )
+      .style('animation-delay', () => `${(Math.random() * 2.4).toFixed(2)}s`)
+      .attr('aria-label', (d) =>
+        `${d.type === 'call' ? 'Call' : 'Put'} ${d.strike}K, Δ ${d.delta.toFixed(2)}, price ${formatCurrency(d.markPrice)}`,
+      )
+      .attr('tabindex', 0)
       .on('mouseover', handleMouseOverPoint)
       .on('mouseout', handleMouseOutPoint)
       .on('click', (event, d) => {
@@ -352,8 +364,8 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         <div class="tooltip-rr">${rrBadge}</div>`;
     };
 
-    // 推奨オプションの円を最前面に移動
-    chartGroup.selectAll('.clickable').raise();
+    // すべてのポイントを最前面に
+    chartGroup.selectAll('.data-point').raise();
 
     /* --------- デルタ帯を示すガイドライン (0.25 / 0.50 / 0.75) --------- */
     const deltaThresholds = [0.25, 0.5, 0.75];

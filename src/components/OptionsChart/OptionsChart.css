@@ -2,7 +2,8 @@
 .options-chart-container {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   position: relative;
-  background-color: #13141b;
+  background-color: rgba(26, 26, 28, 0.7);
+  border: 4px solid #3F3F46;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   padding: 16px;
@@ -246,9 +247,19 @@
 }
 
 /* データポイントベース */
+@keyframes pulsePoint {
+  0%, 100% { r: 6; opacity: 0.9; }
+  50% { r: 9; opacity: 1; }
+}
+
 .data-point {
-  transition: r 0.15s;
-  cursor: pointer;
+  animation: pulsePoint 2.4s ease-in-out infinite;
+  transition: r 0.15s ease, fill 0.15s ease;
+}
+
+.data-point:hover {
+  r: 11;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
 }
 
 .data-point.recommend {

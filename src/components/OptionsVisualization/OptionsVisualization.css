@@ -96,7 +96,12 @@
   line-height: 1.5;
 }
 
-
+.tabs button {
+  border-radius: var(--button-border-radius);
+  height: var(--button-height);
+  min-width: var(--button-min-width);
+  padding: 0 var(--button-padding-x);
+}
 
 .expiry-selector {
   display: flex;
