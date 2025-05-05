@@ -4,6 +4,8 @@ import { PublicKey, SendTransactionError } from "@solana/web3.js";
 import { connection } from "./connection";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { SYSVAR_RENT_PUBKEY, SystemProgram } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const PROGRAM_ID = new PublicKey("4sN8PnN2ki2W4TFXAfzR645FWs8nimmsYeNtxM8RBK6A");
 export const MINT       = new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr");
@@ -35,14 +37,25 @@ export const useUsdcDevFaucet = () => {
       );
       console.log("Destination ATA:", ata.toBase58());
 
+      // ミントPDAとバンプを計算
+      const [mintPda, mintBump] = PublicKey.findProgramAddressSync(
+        [Buffer.from("faucet-mint")],
+        PROGRAM_ID
+      );
+      console.log("Mint PDA:", mintPda.toBase58(), "Bump:", mintBump);
+
       console.log("Sending airdrop transaction via rpc()...");
       const signature = await program.methods
-        .airdrop(new BN(amount * 1_000_000)) // 6 decimals
+        .airdrop(mintBump, new BN(amount * 1_000_000)) // ミントバンプを追加、6 decimals
         .accounts({
           mint: MINT,
-          to: ata,
-          authority: wallet.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID, // ★ トークンプログラムを追加
+          destination: ata,
+          payer: wallet.publicKey,
+          receiver: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
         })
         .rpc({
           skipPreflight: false,
