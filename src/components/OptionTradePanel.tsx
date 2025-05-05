@@ -97,7 +97,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       <div className="option-trade-panel" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="panel-header">
-          <h2>{side === 'buy' ? 'Buy' : 'Sell'} {option.type.toUpperCase()} {option.strike}</h2>
+          <h2>{side === 'buy' ? 'Buy' : 'Sell'} {option.type.toUpperCase()} {option.strike.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
@@ -119,55 +119,95 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           </button>
         </div>
 
-        {/* Price and Size */}
-        <h3 className="section-header">Price / Size</h3>
+        {/* Price and Size Section - Simplified Layout */}
+        <div className="mt-4 space-y-3">
+          <h3 className="text-sm font-semibold text-gray-400 mb-2">Price / Size</h3>
+          {/* Price Input - Stacked */}
+          <div>
+            <label htmlFor="price" className="block text-sm text-gray-300 mb-1">Price (USDT)</label>
+            {/* Input group container with explicit height */}
+            <div className="flex items-center rounded-md h-9 space-x-1">
+              {/* Input wrapper fills height */}
+              <div className="flex-auto min-w-0 bg-gray-700 h-full">
+                <input
+                  id="price"
+                  type="number"
+                  min={0}
+                  step={5} // Consider adjusting step based on market conditions
+                  value={price.toFixed(2)}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  // Input fills wrapper height
+                  className="w-full h-full bg-transparent px-1 py-1 text-right text-white focus:outline-none appearance-none [-moz-appearance:textfield] rounded-l-md"
+                />
+              </div>
+              {/* Button fills height */}
+              <button
+                onClick={() => setPrice((p) => Math.max(0, p - 5))}
+                className="flex-shrink flex-grow-0 min-w-8 h-full px-1 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500"
+                aria-label="Decrease price by 5"
+              >-</button>
+              {/* Button fills height */}
+              <button
+                onClick={() => setPrice((p) => p + 5)}
+                className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
+                aria-label="Increase price by 5"
+              >+</button>
+            </div>
+          </div>
 
-        {/* Price Input with +/- 5 USDT */}
-        <div className="input-group">
-          <label>Price (USDT)</label>
-          <input
-            type="number"
-            min={0}
-            step={5}
-            value={price.toFixed(2)}
-            onChange={(e) => setPrice(Number(e.target.value))}
-          />
-          <button onClick={() => setPrice((p) => Math.max(0, p - 5))}>-</button>
-          <button onClick={() => setPrice((p) => p + 5)}>+</button>
+          {/* Lot Size Input - Stacked */}
+          <div>
+            <label htmlFor="lotSize" className="block text-sm text-gray-300 mb-1">Size (BTC)</label>
+            {/* Input group container with explicit height */}
+            <div className="flex items-center rounded-md h-9 space-x-1">
+              {/* Input wrapper fills height */}
+              <div className="flex-auto min-w-0 bg-gray-700 h-full">
+                <input
+                  id="lotSize"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={lotSize}
+                  onChange={(e) => setLotSize(Number(e.target.value))}
+                  // Input fills wrapper height
+                  className="w-full h-full bg-transparent px-1 py-1 text-right text-white focus:outline-none appearance-none [-moz-appearance:textfield] rounded-l-md"
+                />
+              </div>
+              {/* Button fills height */}
+              <button
+                onClick={() => setLotSize((s) => Math.max(0.01, parseFloat((s - 0.01).toFixed(2))))}
+                className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
+                aria-label="Decrease size by 0.01"
+              >-</button>
+              {/* Button fills height */}
+              <button
+                onClick={() => setLotSize((s) => parseFloat((s + 0.01).toFixed(2)))}
+                className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
+                aria-label="Increase size by 0.01"
+              >+</button>
+            </div>
+          </div>
         </div>
 
-        {/* Lot Size with +/- 0.01 BTC */}
-        <div className="input-group">
-          <label>Size (BTC)</label>
-          <input
-            type="number"
-            min={0.01}
-            step={0.01}
-            value={lotSize}
-            onChange={(e) => setLotSize(Number(e.target.value))}
-          />
-          <button onClick={() => setLotSize((s) => Math.max(0.01, parseFloat((s - 0.01).toFixed(2))))}>-</button>
-          <button onClick={() => setLotSize((s) => parseFloat((s + 0.01).toFixed(2)))}>+</button>
-        </div>
-
-        {/* Price Information */}
-        <h3 className="section-header">Price Information</h3>
-        <div className="price-info">
-          <div><span>Mark Price</span><span>{option.markPrice.toFixed(2)}</span></div>
-          <div><span>Bid</span><span>{option.bid?.toFixed(2) ?? '-'}</span></div>
-          <div><span>Ask</span><span>{option.ask?.toFixed(2) ?? '-'}</span></div>
+        {/* Price Information Section */}
+        <h3 className="section-header mt-4">Price Information</h3>
+        <div className="price-info mt-1 space-y-1">
+          {/* Format numbers with commas */}
+          <div><span>Mark Price</span><span>{option.markPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+          <div><span>Bid</span><span>{option.bid ? option.bid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
+          <div><span>Ask</span><span>{option.ask ? option.ask.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
         </div>
 
         {/* Greeks */}
-        <h3 className="section-header">Greeks</h3>
-        <div className="greeks-info">
+        <h3 className="section-header mt-4">Greeks</h3>
+        <div className="greeks-info mt-1 space-y-1">
           <div><span>Gamma</span><span>{option.gamma ? (option.gamma * sideMultiplier).toFixed(4) : '-'}</span></div>
           <div><span>Theta</span><span>{option.theta ? (option.theta * sideMultiplier).toFixed(4) : '-'}</span></div>
         </div>
 
         {/* Confirm */}
         <button
-          className="confirm-btn"
+          className="confirm-btn mt-6"
           style={{ background: side === 'buy' ? ChartStyles.colors.call : ChartStyles.colors.put }}
           disabled={isSubmitting || usdcBalance < price * lotSize}
           onClick={handleConfirm}
