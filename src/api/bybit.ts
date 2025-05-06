@@ -63,6 +63,7 @@ export interface OptionOrderParams {
   price?: number;
   orderType?: 'Market' | 'Limit';
   timeInForce?: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
+  orderLinkId?: string; // 注文を識別するための一意のID
 }
 
 // Create Order
@@ -181,6 +182,7 @@ export const bybitClient = {
         qty: params.qty.toString(),
         ...(params.price !== undefined ? { price: params.price.toString() } : {}),
         timeInForce: params.timeInForce ?? 'GTC',
+        orderLinkId: params.orderLinkId, // orderLinkIdを追加
       };
       const bodyString = JSON.stringify(body);
       return request<CreateOrderResultData>(endpoint, { method: 'POST', body: bodyString });

@@ -17,7 +17,7 @@ interface OptionTradePanelProps {
 const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, onClose }) => {
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [lotSize, setLotSize] = useState<number>(0.01);
-  const [price, setPrice] = useState<number>(0);
+  const [price, setPrice] = useState<number>(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
 
@@ -45,14 +45,12 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
 
   useEffect(() => {
     if (!visible || !option) {
-      setPrice(0);
       return;
     }
 
     let isMounted = true;
     const fetchPrice = async () => {
       setIsLoadingPrice(true);
-      setPrice(0);
       try {
         const { bybitClient } = await import('../api/bybit');
         const symbol = toBybitSymbol(option);
@@ -73,7 +71,6 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           } else {
             console.warn(`Could not determine valid price for ${symbol}, using 0.`);
           }
-          setPrice(fetchedPrice);
         } else if (isMounted) {
           console.error('[TradePanel] Failed to fetch ticker or ticker not found:', result.retMsg || `No ticker data for ${symbol}`);
           setPrice(0);
@@ -101,6 +98,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
     if (!option || isLoadingPrice) return;
     setIsSubmitting(true);
     const { bybitClient } = await import('../api/bybit');
+    const orderLinkId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     const params: OptionOrderParams = {
       symbol: toBybitSymbol(option),
       side: side === 'buy' ? 'Buy' : 'Sell',
@@ -108,6 +106,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       price,
       orderType: 'Limit',
       timeInForce: 'GTC',
+      orderLinkId,
     };
     try {
       const result = await bybitClient.createOptionOrder(params);
@@ -172,10 +171,15 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
                 <input
                   id="price"
                   type="number"
-                  min={0}
-                  step={1}
+                  min={5}
+                  step={5}
                   value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
+                  onChange={(e) => {
+                    // 入力値を5の倍数に丸める
+                    const rawValue = Number(e.target.value);
+                    const roundedValue = Math.round(rawValue / 5) * 5;
+                    setPrice(roundedValue);
+                  }}
                   disabled={isLoadingPrice}
                   className="w-full h-full bg-transparent px-1 py-1 text-right text-white focus:outline-none appearance-none [-moz-appearance:textfield] rounded-l-md"
                 />
@@ -226,7 +230,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
 
         <h3 className="section-header mt-4">Price Information</h3>
         <div className="price-info mt-1 space-y-1">
-          <div><span>Mark Price</span><span>{option.markPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+          <div><span>Mark Price</span><span>{option.markPrice ? option.markPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
           <div><span>Bid</span><span>{option.bid ? option.bid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
           <div><span>Ask</span><span>{option.ask ? option.ask.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
         </div>
