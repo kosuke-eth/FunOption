@@ -9,6 +9,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { getUsdcDevBalance } from "../solana/checkBalance";
 import { saveOrderToHistory } from '../utils/localStorageHistory';
 import { RawOrderHistoryEntry } from '../types/orderHistory';
+import { transferUsdcDev, PLACEHOLDER_DESTINATION_PUBLIC_KEY } from "../solana/transferUsdcDev";
+import { AnchorProvider } from "@project-serum/anchor";
+import { connection } from "../solana/connection";
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -30,7 +33,7 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
 
   const { showSnackbar } = useSnackbar();
   const { addTrade } = useOptionTrades();
-  const { publicKey } = useWallet();
+  const { publicKey, signTransaction, wallet } = useWallet();
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
 
   useEffect(() => {
@@ -91,7 +94,10 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
   }, [option, visible, side]);
 
   const handleConfirm = async () => {
-    if (!option || isLoadingPrice) return;
+    if (!option || isLoadingPrice || !publicKey || !signTransaction || !wallet) {
+      showSnackbar("Wallet not connected or data not loaded.", "error");
+      return;
+    }
     setIsSubmitting(true);
     const { bybitClient } = await import('../api/bybit');
     const orderLinkId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
@@ -117,8 +123,45 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           time: Date.now(),
         });
         showSnackbar(`Order ${params.side} ${params.qty} ${params.symbol} @ ${params.price} placed successfully! ID: ${result.result.orderId}`, 'success');
-        
-        // Save to local history
+
+        const orderAmount = price; // 変更後：Price (USDC) の値をそのまま使用
+
+        // SolanaウォレットからUSDC-DEVを送金
+        try {
+          // anchorWalletを明示的に構成
+          const anchorWallet = {
+            publicKey: publicKey!, 
+            signTransaction: signTransaction!,
+          };
+          const provider = new AnchorProvider(connection, anchorWallet as any, {
+            preflightCommitment: "confirmed",
+            commitment: "confirmed",
+          });
+
+          showSnackbar(`Attempting to transfer ${orderAmount.toFixed(6)} USDC-DEV...`, "info");
+
+          await transferUsdcDev(
+            provider, 
+            orderAmount, 
+            PLACEHOLDER_DESTINATION_PUBLIC_KEY.toBase58()
+          );
+          showSnackbar(
+            `Successfully transferred ${orderAmount.toFixed(6)} USDC-DEV.`,
+            'success'
+          );
+          // 残高を更新
+          getUsdcDevBalance(publicKey).then(setUsdcBalance);
+        } catch (solanaError) {
+          console.error("[TradePanel] Solana transfer error:", solanaError);
+          let errorMessage = "Failed to transfer USDC-DEV from Solana wallet.";
+          if (solanaError instanceof Error) {
+            errorMessage += ` Error: ${solanaError.message}`;
+          }
+          showSnackbar(errorMessage, "error");
+          // Bybit注文は成功したがSolana送金で失敗した場合の補償処理をここに追加することも検討 (例: 注文取り消し等)
+        }
+
+        // localStorageに注文履歴を保存
         try {
           let baseAsset = '';
           let quoteAsset = '';

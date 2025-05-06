@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-type SnackbarType = 'success' | 'error';
+type SnackbarType = 'success' | 'error' | 'info';
 
 interface SnackbarContextType {
   showSnackbar: (message: string, type: SnackbarType) => void;
@@ -27,7 +27,7 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
       {children}
       {snack.open && (
         <div className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded shadow text-white ${
-          snack.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          snack.type === 'success' ? 'bg-green-500' : snack.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
         }`}>
           {snack.message}
         </div>
