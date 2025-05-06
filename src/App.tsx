@@ -1,7 +1,7 @@
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import HistoryPage from "pages/history";
 import OptionsPage from "pages/options";
-import { OptionsDataProvider } from "./providers/OptionsDataProvider";
+import { OptionsProvider } from "./providers/OptionsDataProvider";
 import { SnackbarProvider } from "components/SnackbarProvider";
 import { OptionTradesProvider } from "providers/OptionTradesProvider";
 import { SolanaWalletProvider } from "solana/WalletProvider";
@@ -9,7 +9,7 @@ import { SolanaWalletProvider } from "solana/WalletProvider";
 function App() {
   return (
     <SolanaWalletProvider>
-      <OptionsDataProvider>
+      <OptionsProvider>
         <SnackbarProvider>
           <OptionTradesProvider>
             <BrowserRouter>
@@ -20,7 +20,7 @@ function App() {
             </BrowserRouter>
           </OptionTradesProvider>
         </SnackbarProvider>
-      </OptionsDataProvider>
+      </OptionsProvider>
     </SolanaWalletProvider>
   );
 }

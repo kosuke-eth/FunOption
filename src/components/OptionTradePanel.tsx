@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { OptionData } from '../mockData/optionsMock';
 import { ChartStyles } from './OptionsChart/colorUtils';
 import './OptionTradePanel.css';
-import type { OptionOrderParams, CreateOrderResult } from '../api/bybit';
+import type { OptionOrderParams, CreateOrderResultData, OptionTicker } from '../api/bybit';
 import { useSnackbar } from './SnackbarProvider';
 import { useOptionTrades } from 'providers/OptionTradesProvider';
 import { useWallet } from "@solana/wallet-adapter-react";
-import { getUsdcDevBalance } from "solana/checkBalance";
+import { getUsdcDevBalance } from "../solana/checkBalance";
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -17,17 +17,12 @@ interface OptionTradePanelProps {
 const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, onClose }) => {
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [lotSize, setLotSize] = useState<number>(0.01);
-  const [price, setPrice] = useState<number>(option?.ask ?? option?.markPrice ?? 0);
+  const [price, setPrice] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
 
   const sideMultiplier = side === 'buy' ? 1 : -1;
 
-  // update price when option changes
-  useEffect(() => {
-    setPrice(option?.ask ?? option?.markPrice ?? 0);
-  }, [option]);
-
-  // Bybit symbol generator e.g., BTC - 31MAY24 - 60000 - C
   const toBybitSymbol = (opt: OptionData): string => {
     const [yyyy, mm, dd] = opt.expiry.split('-');
     const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -48,8 +43,62 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
     }
   }, [publicKey, visible]);
 
+  useEffect(() => {
+    if (!visible || !option) {
+      setPrice(0);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchPrice = async () => {
+      setIsLoadingPrice(true);
+      setPrice(0);
+      try {
+        const { bybitClient } = await import('../api/bybit');
+        const symbol = toBybitSymbol(option);
+        console.log('[TradePanel] Fetching price for symbol:', symbol);
+        const result = await bybitClient.getOptionTickers({ symbol });
+        console.log('[TradePanel] API Result:', JSON.stringify(result, null, 2));
+
+        if (isMounted && result.retCode === 0 && result.result?.list?.length > 0) {
+          const ticker = result.result.list[0];
+          console.log('[TradePanel] Ticker data:', JSON.stringify(ticker, null, 2));
+          let fetchedPrice = 0;
+          if (side === 'buy' && parseFloat(ticker.ask1Price) > 0) {
+            fetchedPrice = parseFloat(ticker.ask1Price);
+          } else if (side === 'sell' && parseFloat(ticker.bid1Price) > 0) {
+            fetchedPrice = parseFloat(ticker.bid1Price);
+          } else if (parseFloat(ticker.markPrice) > 0) {
+            fetchedPrice = parseFloat(ticker.markPrice);
+          } else {
+            console.warn(`Could not determine valid price for ${symbol}, using 0.`);
+          }
+          setPrice(fetchedPrice);
+        } else if (isMounted) {
+          console.error('[TradePanel] Failed to fetch ticker or ticker not found:', result.retMsg || `No ticker data for ${symbol}`);
+          setPrice(0);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('[TradePanel] Error fetching ticker data:', error);
+          setPrice(0);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingPrice(false);
+        }
+      }
+    };
+
+    fetchPrice();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [option, visible, side]);
+
   const handleConfirm = async () => {
-    if (!option) return;
+    if (!option || isLoadingPrice) return;
     setIsSubmitting(true);
     const { bybitClient } = await import('../api/bybit');
     const params: OptionOrderParams = {
@@ -57,14 +106,13 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
       side: side === 'buy' ? 'Buy' : 'Sell',
       qty: lotSize,
       price,
-      orderType: 'Limit', // Explicitly set Limit order
-      timeInForce: 'GTC',  // Good Till Cancelled
+      orderType: 'Limit',
+      timeInForce: 'GTC',
     };
     try {
-      const result: CreateOrderResult = await bybitClient.createOptionOrder(params);
+      const result = await bybitClient.createOptionOrder(params);
       console.log('Order placed result:', result);
       if (result.retCode === 0 && result.result?.orderId) {
-        // 保存用のトレード情報を context/localStorage に登録
         addTrade({
           orderId: result.result.orderId,
           symbol: params.symbol,
@@ -88,20 +136,16 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
     setIsSubmitting(false);
   };
 
-  // モーダル表示でなければ描画しない
   if (!visible || !option) return null;
 
   return (
     <div className="option-trade-overlay" onClick={onClose}>
-      {/* モーダル本体。クリックをバブリングさせない */}
       <div className="option-trade-panel" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="panel-header">
           <h2>{side === 'buy' ? 'Buy' : 'Sell'} {option.type.toUpperCase()} {option.strike.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        {/* Side Switch */}
         <div className="toggle-group">
           <button
             className={`buy-btn ${side === 'buy' ? 'active' : ''}`}
@@ -119,48 +163,42 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           </button>
         </div>
 
-        {/* Price and Size Section - Simplified Layout */}
         <div className="mt-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-400 mb-2">Price / Size</h3>
-          {/* Price Input - Stacked */}
           <div>
-            <label htmlFor="price" className="block text-sm text-gray-300 mb-1">Price (USDT)</label>
-            {/* Input group container with explicit height */}
-            <div className="flex items-center rounded-md h-9 space-x-1">
-              {/* Input wrapper fills height */}
+            <label htmlFor="price" className="block text-sm text-gray-300 mb-1">Price (USDC)</label>
+            <div className={`flex items-center rounded-md h-9 space-x-1 ${isLoadingPrice ? 'opacity-50' : ''}`}>
               <div className="flex-auto min-w-0 bg-gray-700 h-full">
                 <input
                   id="price"
                   type="number"
                   min={0}
-                  step={5} // Consider adjusting step based on market conditions
-                  value={price.toFixed(2)}
+                  step={1}
+                  value={price}
                   onChange={(e) => setPrice(Number(e.target.value))}
-                  // Input fills wrapper height
+                  disabled={isLoadingPrice}
                   className="w-full h-full bg-transparent px-1 py-1 text-right text-white focus:outline-none appearance-none [-moz-appearance:textfield] rounded-l-md"
                 />
               </div>
-              {/* Button fills height */}
               <button
                 onClick={() => setPrice((p) => Math.max(0, p - 5))}
+                disabled={isLoadingPrice}
                 className="flex-shrink flex-grow-0 min-w-8 h-full px-1 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500"
                 aria-label="Decrease price by 5"
               >-</button>
-              {/* Button fills height */}
               <button
                 onClick={() => setPrice((p) => p + 5)}
+                disabled={isLoadingPrice}
                 className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
                 aria-label="Increase price by 5"
               >+</button>
             </div>
+            {isLoadingPrice && <div className="text-xs text-gray-400 mt-1">Loading price...</div>}
           </div>
 
-          {/* Lot Size Input - Stacked */}
           <div>
             <label htmlFor="lotSize" className="block text-sm text-gray-300 mb-1">Size (BTC)</label>
-            {/* Input group container with explicit height */}
             <div className="flex items-center rounded-md h-9 space-x-1">
-              {/* Input wrapper fills height */}
               <div className="flex-auto min-w-0 bg-gray-700 h-full">
                 <input
                   id="lotSize"
@@ -169,17 +207,14 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
                   step={0.01}
                   value={lotSize}
                   onChange={(e) => setLotSize(Number(e.target.value))}
-                  // Input fills wrapper height
                   className="w-full h-full bg-transparent px-1 py-1 text-right text-white focus:outline-none appearance-none [-moz-appearance:textfield] rounded-l-md"
                 />
               </div>
-              {/* Button fills height */}
               <button
                 onClick={() => setLotSize((s) => Math.max(0.01, parseFloat((s - 0.01).toFixed(2))))}
                 className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
                 aria-label="Decrease size by 0.01"
               >-</button>
-              {/* Button fills height */}
               <button
                 onClick={() => setLotSize((s) => parseFloat((s + 0.01).toFixed(2)))}
                 className="flex-shrink flex-grow-0 min-w-8 h-full bg-gray-600 hover:bg-gray-500 text-white text-sm flex items-center justify-center border-l border-gray-500 rounded-r-md"
@@ -189,30 +224,26 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           </div>
         </div>
 
-        {/* Price Information Section */}
         <h3 className="section-header mt-4">Price Information</h3>
         <div className="price-info mt-1 space-y-1">
-          {/* Format numbers with commas */}
           <div><span>Mark Price</span><span>{option.markPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
           <div><span>Bid</span><span>{option.bid ? option.bid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
           <div><span>Ask</span><span>{option.ask ? option.ask.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span></div>
         </div>
 
-        {/* Greeks */}
         <h3 className="section-header mt-4">Greeks</h3>
         <div className="greeks-info mt-1 space-y-1">
           <div><span>Gamma</span><span>{option.gamma ? (option.gamma * sideMultiplier).toFixed(4) : '-'}</span></div>
           <div><span>Theta</span><span>{option.theta ? (option.theta * sideMultiplier).toFixed(4) : '-'}</span></div>
         </div>
 
-        {/* Confirm */}
         <button
           className="confirm-btn mt-6"
           style={{ background: side === 'buy' ? ChartStyles.colors.call : ChartStyles.colors.put }}
-          disabled={isSubmitting || usdcBalance < price * lotSize}
+          disabled={isSubmitting || isLoadingPrice || usdcBalance < price * lotSize}
           onClick={handleConfirm}
         >
-          {isSubmitting ? 'Placing…' : 'Confirm'}
+          {isSubmitting ? 'Placing…' : (isLoadingPrice ? 'Loading Price...' : 'Confirm')}
         </button>
         <div className="mt-2 text-sm">USDC-DEV Balance: {usdcBalance.toFixed(6)}</div>
       </div>

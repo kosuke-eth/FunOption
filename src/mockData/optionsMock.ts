@@ -1,17 +1,18 @@
 // オプション取引のデータモデル
 export interface OptionData {
   strike: number;        // ストライク価格
-  markPrice: number;     // マーク価格
-  iv: number;            // インプライド・ボラティリティ (%)
-  delta: number;         // デルタ値 (-1.0 ~ 1.0)
-  gamma: number;         // ガンマ値
+  markPrice?: number;    // マーク価格
+  iv?: number;           // インプライド・ボラティリティ (%)
+  delta?: number;        // デルタ値 (-1.0 ~ 1.0)
+  gamma?: number;        // ガンマ値
   theta?: number;        // セータ値
   bid?: number;          // Bid 価格
   ask?: number;          // Ask 価格
-  volume: number;        // 取引量
-  openInterest: number;  // 未決済約定数
+  volume?: number;       // 取引量
+  openInterest?: number; // 未決済約定数
   type: 'call' | 'put';  // オプションタイプ
   expiry: string;        // 満期日 (ISO形式)
+  symbol: string;        // Bybit symbol (例: BTC-30JUN23-28000-C)
   // 追加項目
   buyScore?: number;     // 買い目度スコア (0-100)
   fairPremium?: number;  // デルタから計算した理論上妥当なプレミアム

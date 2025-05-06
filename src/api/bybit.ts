@@ -32,7 +32,7 @@ function buildHeaders(payload: string = '', recvWindow: string = '5000'): Header
   };
 }
 
-async function request<T>(endpoint: string, options: RequestInit & { qs?: string } = {}): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit & { qs?: string } = {}): Promise<BybitApiResponse<T>> {
   const { qs = '', method = 'GET', body } = options;
   const payloadForSig = method === 'GET' ? qs : body ?? '';
   const headers = buildHeaders(payloadForSig as string);
@@ -46,6 +46,15 @@ async function request<T>(endpoint: string, options: RequestInit & { qs?: string
   return res.json();
 }
 
+// 汎用的な Bybit API レスポンス型
+export interface BybitApiResponse<T> {
+  retCode: number;       // 0 は成功を示す
+  retMsg: string;        // エラーメッセージまたは 'OK'
+  result: T;             // 実際の結果データ
+  retExtInfo: any;       // 追加情報 (通常は空)
+  time: number;          // サーバータイムスタンプ
+}
+
 // オプション注文用のパラメータ型
 export interface OptionOrderParams {
   symbol: string;
@@ -56,16 +65,10 @@ export interface OptionOrderParams {
   timeInForce?: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
 }
 
-// Bybit API レスポンス型 (注文作成)
-export interface CreateOrderResult {
-  retCode: number;
-  retMsg: string;
-  result: {
-    orderId: string;
-    orderLinkId?: string;
-  };
-  retExtInfo: Record<string, any>; // Use Record<string, any> for unknown object structure
-  time: number;
+// Create Order
+export interface CreateOrderResultData {
+  orderId: string;
+  orderLinkId?: string;
 }
 
 // オプション注文履歴レコード型
@@ -83,36 +86,91 @@ export interface OrderHistoryRecord {
 
 // オプション注文履歴取得レスポンス型
 export interface GetOrderHistoryResult {
-  retCode: number;
-  retMsg: string;
-  result: {
-    list: OrderHistoryRecord[];
-    nextPageCursor?: string;
+  list: OrderHistoryRecord[];
+  nextPageCursor?: string;
+}
+
+// --- 追加: Option Ticker 情報の型定義 ---
+export interface OptionTicker {
+  symbol: string; // シンボル名 (例: BTC-30AUG24-100000-C)
+  bid1Price: string; // 最良買気配値
+  bid1Size: string;  // 最良買気配数量
+  ask1Price: string; // 最良売気配値
+  ask1Size: string;  // 最良売気配数量
+  lastPrice: string; // 最終取引価格
+  markPrice: string; // マーク価格
+  indexPrice: string; // インデックス価格 (原資産価格)
+  iv: string; // インプライド・ボラティリティ
+  markIv: string; // マークプライスのインプライド・ボラティリティ
+  delta: string;
+  gamma: string;
+  vega: string;
+  theta: string;
+  highPrice24h: string; // 24時間高値
+  lowPrice24h: string; // 24時間安値
+  turnover24h: string; // 24時間取引高 (Quote currency)
+  volume24h: string; // 24時間出来高 (Base currency)
+  openInterest: string; // 未決済建玉
+  // 他にも useful な field があるかもしれない
+}
+
+export interface GetTickersResult {
+  category: 'option';
+  list: OptionTicker[];
+}
+
+// --- 追加: Option Instrument 情報の型定義 ---
+export interface OptionInstrumentInfo {
+  symbol: string;
+  baseCoin: string;
+  quoteCoin: string;
+  launchTime: string;
+  deliveryTime: string; // 満期日時 (UTC)
+  deliveryFeeRate: string;
+  priceFilter: {
+    minPrice: string;
+    maxPrice: string;
+    tickSize: string;
   };
+  lotSizeFilter: {
+    maxOrderQty: string;
+    minOrderQty: string;
+    qtyStep: string;
+    postOnlyMaxOrderQty: string;
+  };
+  status: 'Trading' | 'PreLaunch' | 'Settling' | 'Delivering' | 'Closed';
+  optionsType: 'Call' | 'Put';
+  strikePrice: string;
+}
+
+export interface GetInstrumentsInfoResult {
+  category: 'option';
+  list: OptionInstrumentInfo[];
+  nextPageCursor: string;
 }
 
 // Bybit APIクライアント
 export const bybitClient = {
   // マーケットデータを取得
-  async getMarketData(symbol: string = 'BTCUSDT') {
+  async getMarketData(symbol: string = 'BTCUSDT'): Promise<BybitApiResponse<GetTickersResult>> {
     const qs = `category=spot&symbol=${symbol}`;
-    return request('/v5/market/tickers', { qs });
+    return request<GetTickersResult>('/v5/market/tickers', { qs });
   },
 
   // K線データを取得
-  async getKlineData(symbol: string = 'BTCUSDT', interval: string = '1d', limit: number = 200) {
+  async getKlineData(symbol: string = 'BTCUSDT', interval: string = '1d', limit: number = 200): Promise<BybitApiResponse<GetTickersResult>> {
     const qs = `category=spot&symbol=${symbol}&interval=${interval}&limit=${limit}`;
-    return request('/v5/market/kline', { qs });
+    return request<GetTickersResult>('/v5/market/kline', { qs });
   },
 
   // アカウント情報を取得
-  async getAccountInfo() {
+  async getAccountInfo(): Promise<BybitApiResponse<any>> {
     const qs = 'accountType=UNIFIED';
-    return request('/v5/account/wallet-balance', { qs });
+    return request<any>('/v5/account/wallet-balance', { qs });
   },
 
   // オプション注文を発注
-  async createOptionOrder(params: OptionOrderParams): Promise<CreateOrderResult> {
+  async createOptionOrder(params: OptionOrderParams): Promise<BybitApiResponse<CreateOrderResultData>> {
     try {
       const endpoint = '/v5/order/create';
       const body = {
@@ -125,7 +183,7 @@ export const bybitClient = {
         timeInForce: params.timeInForce ?? 'GTC',
       };
       const bodyString = JSON.stringify(body);
-      return request<CreateOrderResult>(endpoint, { method: 'POST', body: bodyString });
+      return request<CreateOrderResultData>(endpoint, { method: 'POST', body: bodyString });
     } catch (error) {
       console.error('Error creating option order:', error);
       throw error;
@@ -133,10 +191,38 @@ export const bybitClient = {
   },
 
   // オプション注文履歴を取得
-  async getOptionOrderHistory(symbol?: string): Promise<GetOrderHistoryResult> {
+  async getOptionOrderHistory(symbol?: string): Promise<BybitApiResponse<GetOrderHistoryResult>> {
     const qs = `category=option${symbol ? `&symbol=${symbol}` : ''}`;
     return request<GetOrderHistoryResult>('/v5/order/history', { qs });
-  }
+  },
+
+  // --- 追加: オプション商品情報取得関数 ---
+  async getOptionInstruments(params: { baseCoin?: string; status?: 'Trading' | 'PreLaunch' | 'Settling' | 'Delivering' | 'Closed'; limit?: number; cursor?: string }): Promise<BybitApiResponse<GetInstrumentsInfoResult>> {
+    const qsParams = new URLSearchParams({ category: 'option' });
+    if (params.baseCoin) qsParams.append('baseCoin', params.baseCoin);
+    if (params.status) qsParams.append('status', params.status);
+    if (params.limit) qsParams.append('limit', params.limit.toString());
+    if (params.cursor) qsParams.append('cursor', params.cursor);
+    const qs = qsParams.toString();
+    return request<GetInstrumentsInfoResult>('/v5/market/instruments-info', { qs });
+  },
+
+  // --- 追加: オプションティッカー取得関数 ---
+  async getOptionTickers(params?: { symbol?: string; baseCoin?: string; expDate?: string }): Promise<BybitApiResponse<GetTickersResult>> {
+    const qsParams = new URLSearchParams({ category: 'option' });
+    if (params?.symbol) qsParams.append('symbol', params.symbol);
+    if (params?.baseCoin) qsParams.append('baseCoin', params.baseCoin);
+    if (params?.expDate) qsParams.append('expDate', params.expDate); // 例: '29MAR24'
+    const qs = qsParams.toString();
+    return request<GetTickersResult>('/v5/market/tickers', { qs });
+  },
+
+  // --- 追加: Bybit Ticker 情報取得関数 ---
+  async getBybitTickers(baseCoin: string): Promise<BybitApiResponse<GetTickersResult>> {
+    const qsParams = new URLSearchParams({ category: 'option', baseCoin });
+    const qs = qsParams.toString();
+    return request<GetTickersResult>('/v5/market/tickers', { qs });
+  },
 };
 
 if (!API_KEY || !API_SECRET) {

@@ -2,20 +2,23 @@ import React, { useState, useEffect } from 'react';
 import OptionsChart from '../OptionsChart/OptionsChart';
 import OptionTradePanel from '../OptionTradePanel';
 import { OptionData } from '../../mockData/optionsMock';
-import { useOptionsData } from '../../providers/OptionsDataProvider';
+import { useOptions } from '../../providers/OptionsDataProvider';
 import './OptionsVisualization.css';
 import { ChartStyles } from '../OptionsChart/colorUtils';
 
-// 日付をフォーマットするヘルパー関数
+// 日付をフォーマットするヘルパー関数 (YYYY-MM-DD -> DD-MM-YY)
 const formatExpiryDate = (dateStr: string): string => {
   try {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0].substring(2)}`;
+    const date = new Date(dateStr + 'T00:00:00Z'); // Assume UTC date
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid date string');
     }
-    return dateStr;
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Get month as number (0-indexed + 1)
+    const year = String(date.getUTCFullYear()).substring(2);
+    return `${day}-${month}-${year}`;
   } catch (err) {
-    console.error('Date formatting error:', dateStr);
+    console.error('Date formatting error:', dateStr, err);
     return dateStr || 'Invalid Date';
   }
 };
@@ -28,10 +31,10 @@ const OptionsVisualization: React.FC = () => {
     currentPrice,
     selectedExpiry,
     setSelectedExpiry,
-    isLoading,
+    loading,
     error,
     refreshData
-  } = useOptionsData();
+  } = useOptions();
 
   const [activeTab, setActiveTab] = useState<'call' | 'put'>('call');
   const [filteredOptions, setFilteredOptions] = useState<OptionData[]>([]);
@@ -63,6 +66,10 @@ const OptionsVisualization: React.FC = () => {
     setTradePanelVisible(true);
   };
 
+  if (loading) {
+    return <div className="loading-indicator">Loading Options Data...</div>;
+  }
+
   return (
     <div className="options-visualization-container">
 
@@ -89,7 +96,7 @@ const OptionsVisualization: React.FC = () => {
         <button
           className={`date-button ${selectedExpiry === "all" ? "active" : ""}`}
           onClick={() => setSelectedExpiry("all")}
-          disabled={isLoading}
+          disabled={loading}
         >
           All
         </button>
@@ -106,7 +113,7 @@ const OptionsVisualization: React.FC = () => {
               key={index} // expの代わりにindexを使用
               className={`date-button ${selectedExpiry === exp ? "active" : ""}`}
               onClick={() => setSelectedExpiry(exp)}
-              disabled={isLoading}
+              disabled={loading}
             >
               {formattedDate}
             </button>
@@ -131,12 +138,17 @@ const OptionsVisualization: React.FC = () => {
         )}
       </div>
 
-      <OptionTradePanel
-        option={selectedOptionDetail}
-        visible={tradePanelVisible}
-        onClose={() => setTradePanelVisible(false)}
-      />
-
+      {loading ? (
+        <div className="loading-indicator">Loading chart...</div>
+      ) : error ? (
+        <div className="error-message">Error loading chart data: {error}</div>
+      ) : (
+        <OptionTradePanel
+          option={selectedOptionDetail}
+          visible={tradePanelVisible}
+          onClose={() => setTradePanelVisible(false)}
+        />
+      )}
     </div>
   );
 };
