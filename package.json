@@ -36,7 +36,8 @@
     "react-datepicker": "^8.2.1",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.4.1",
-    "typechain": "^8.3.2"
+    "typechain": "^8.3.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -44,6 +45,7 @@
     "@types/d3": "^7.4.3",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "assert": "^2.1.0",
     "autoprefixer": "^10.4.21",

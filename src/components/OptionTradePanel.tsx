@@ -7,6 +7,8 @@ import { useSnackbar } from './SnackbarProvider';
 import { useOptionTrades } from 'providers/OptionTradesProvider';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getUsdcDevBalance } from "../solana/checkBalance";
+import { saveOrderToHistory } from '../utils/localStorageHistory';
+import { RawOrderHistoryEntry } from '../types/orderHistory';
 
 interface OptionTradePanelProps {
   option: OptionData | null;
@@ -23,14 +25,8 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
 
   const sideMultiplier = side === 'buy' ? 1 : -1;
 
-  const toBybitSymbol = (opt: OptionData): string => {
-    const [yyyy, mm, dd] = opt.expiry.split('-');
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const month = monthNames[Number(mm) - 1];
-    const yy = yyyy.slice(2);
-    const typeCode = opt.type === 'call' ? 'C' : 'P';
-    return `BTC-${dd}${month}${yy}-${opt.strike}-${typeCode}`;
-  };
+  // Use the exact instrument symbol returned by OptionsDataProvider (includes settlement coin suffix, e.g., "-USDT")
+  const toBybitSymbol = (opt: OptionData): string => opt.symbol;
 
   const { showSnackbar } = useSnackbar();
   const { addTrade } = useOptionTrades();
@@ -116,12 +112,65 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, visible, on
           orderId: result.result.orderId,
           symbol: params.symbol,
           side: params.side,
+          price: params.price,
           qty: params.qty,
-          price,
           time: Date.now(),
         });
-        showSnackbar(`Order successful: ${result.result.orderId}`, 'success');
-        onClose();
+        showSnackbar(`Order ${params.side} ${params.qty} ${params.symbol} @ ${params.price} placed successfully! ID: ${result.result.orderId}`, 'success');
+        
+        // Save to local history
+        try {
+          let baseAsset = '';
+          let quoteAsset = '';
+          let productType: RawOrderHistoryEntry['productType'] = 'USDTオプション'; // Default
+
+          const symbolParts = params.symbol.split('-');
+          if (symbolParts.length > 0) {
+            const firstPart = symbolParts[0];
+            if (firstPart.includes('USDT')) {
+              baseAsset = firstPart.replace('USDT', '');
+              quoteAsset = 'USDT';
+              productType = 'USDTオプション';
+            } else if (firstPart.includes('USDC')) {
+              baseAsset = firstPart.replace('USDC', '');
+              quoteAsset = 'USDC';
+              productType = 'USDCオプション';
+            } else {
+              // Fallback if USDT/USDC not in the first part (e.g. BTC-expiry...)
+              // This logic might need adjustment based on actual symbol format from OptionsDataProvider
+              baseAsset = firstPart; // Assuming it's just the base asset like BTC
+              // Try to infer quote asset from the full symbol if possible, or default
+              if (params.symbol.includes('USDT')) quoteAsset = 'USDT';
+              else if (params.symbol.includes('USDC')) quoteAsset = 'USDC';
+              else quoteAsset = 'USD'; // Generic fallback
+              productType = quoteAsset === 'USDT' ? 'USDTオプション' : (quoteAsset === 'USDC' ? 'USDCオプション' : `${quoteAsset}オプション`);
+            }
+          }
+
+          const historyEntry: Omit<RawOrderHistoryEntry, 'internalId'> = {
+            apiOrderId: result.result.orderId,
+            clientOrderId: params.orderLinkId,
+            symbol: params.symbol,
+            productType: productType,
+            orderType: params.orderType as 'Limit' | 'Market', // Assuming 'Limit' based on current params
+            side: params.side as 'Buy' | 'Sell',
+            price: params.price,
+            quantity: params.qty,
+            baseAsset: baseAsset,
+            quoteAsset: quoteAsset,
+            filledQuantity: 0, // Order just placed, not filled yet
+            orderValue: (params.price ?? 0) * params.qty,
+            isReduceOnly: false, // Assuming not reduce-only for now
+            timestamp: Date.now(),
+          };
+          saveOrderToHistory(historyEntry);
+          showSnackbar('Order saved to local history.', 'success');
+        } catch (historyError) {
+          console.error('Failed to save order to local history:', historyError);
+          showSnackbar('Failed to save order to local history.', 'error');
+        }
+
+        onClose(); // Close panel on success
       } else {
         const errorMsg = result.retMsg || 'Unknown API error';
         console.error('Bybit API Error:', result);
