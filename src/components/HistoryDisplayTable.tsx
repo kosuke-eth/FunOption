@@ -5,10 +5,30 @@ import './HistoryDisplayTable.css'; // We'll create this for styling
 
 const HistoryDisplayTable: React.FC = () => {
   const [history, setHistory] = useState<RawOrderHistoryEntry[]>([]);
-
+ 
   useEffect(() => {
-    setHistory(getOrderHistory());
-  }, []);
+    const loadHistory = () => {
+      // getOrderHistory() が返す配列をコピーしてからソートする
+      const currentHistory = getOrderHistory();
+      setHistory([...currentHistory].sort((a, b) => b.timestamp - a.timestamp)); // 新しい順にソート
+    };
+
+    loadHistory(); // 初回読み込み
+
+    const handleStorageChange = () => {
+        console.log('[HistoryDisplayTable] orderHistoryUpdated event received or storage changed.');
+        loadHistory();
+    };
+
+    window.addEventListener('storage', handleStorageChange); // 他のタブでのlocalStorage変更を検知
+    window.addEventListener('orderHistoryUpdated', handleStorageChange); // OptionTradePanelからのカスタムイベントを検知
+
+    // クリーンアップ関数
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('orderHistoryUpdated', handleStorageChange);
+    };
+  }, []); // 依存配列は空のまま（イベントリスナーの登録・解除は一度だけでよいため）
 
   const formatTimestamp = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString('en-US', {

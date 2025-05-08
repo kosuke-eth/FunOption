@@ -8,11 +8,11 @@ import {
   GetTickersResult,
 } from '../api/bybit';
 
-// Helper to safely parse float, returns null if invalid or zero-like
-const safeParseFloat = (value: string | number | undefined): number | null => {
-  if (value === undefined || value === null || value === '') return null;
+// Helper to safely parse float, returns undefined if invalid or zero-like
+const safeParseFloat = (value: string | number | undefined): number | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
   const num = parseFloat(String(value));
-  return isNaN(num) ? null : num; // Return null for NaN
+  return isNaN(num) ? undefined : num; // Return undefined for NaN
 };
 
 // Helper: Symbol stringからstrike priceを抽出
@@ -35,7 +35,7 @@ const getExpiryDate = (deliveryTime: string): string => {
 };
 
 // Helper: Fetch BTC Spot Price directly (restored standalone function)
-const fetchBtcSpotPrice = async (): Promise<number | null> => {
+const fetchBtcSpotPrice = async (): Promise<number | undefined> => {
   try {
     // Using the client if it has a spot ticker method, otherwise direct fetch
     // Assuming direct fetch for now based on previous structure
@@ -47,14 +47,17 @@ const fetchBtcSpotPrice = async (): Promise<number | null> => {
     if (data.retCode === 0 && data.result?.list?.[0]?.lastPrice) {
       const price = safeParseFloat(data.result.list[0].lastPrice);
       console.log(`[DataProvider] Fetched BTC spot price directly: ${price ?? 'null'}`);
-      return price; // Return number or null
-    } else {
+      return price; // Return number or undefined
+    } else if (data.retCode !== 0) {
       console.warn('[DataProvider] Could not fetch BTC price from direct API call:', data.retMsg || 'Unknown error');
-      return null;
+      return undefined;
+    } else {
+      console.warn('[DataProvider] BTC price data not found in direct API response.');
+      return undefined;
     }
   } catch (err) {
     console.error('[DataProvider] Error fetching BTC price directly:', err);
-    return null;
+    return undefined;
   }
 };
 
@@ -62,16 +65,16 @@ export interface OptionData {
   symbol: string;
   strike: number;
   type: 'call' | 'put';
-  expiry: string; 
-  markPrice: number | null;
-  iv: number | null;
-  delta: number | null;
-  gamma: number | null;
-  theta: number | null;
-  bid: number | null;
-  ask: number | null;
-  volume: number | null;
-  openInterest: number | null;
+  expiry: string;
+  markPrice?: number;
+  iv?: number;
+  delta?: number;
+  gamma?: number;
+  theta?: number;
+  bid?: number;
+  ask?: number;
+  volume?: number;
+  openInterest?: number;
 }
 
 interface OptionsContextProps {
@@ -80,11 +83,11 @@ interface OptionsContextProps {
   expirations: string[];
   selectedExpiry: string;
   setSelectedExpiry: (expiry: string) => void;
-  currentPrice: number | null;
+  currentPrice: number | undefined;
   loading: boolean;
   error: string | null;
   loadingMessage: string | null;
-  refreshData: () => void; 
+  refreshData: () => void;
 }
 
 const OptionsContext = createContext<OptionsContextProps | undefined>(undefined);
@@ -93,8 +96,8 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [callOptions, setCallOptions] = useState<OptionData[]>([]);
   const [putOptions, setPutOptions] = useState<OptionData[]>([]);
   const [expirations, setExpirations] = useState<string[]>([]);
-  const [selectedExpiry, setSelectedExpiry] = useState<string>('all'); 
-  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [selectedExpiry, setSelectedExpiry] = useState<string>('all');
+  const [currentPrice, setCurrentPrice] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>('Initializing...');
@@ -108,7 +111,7 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       let allInstruments: OptionInstrumentInfo[] = [];
       let cursor: string | undefined = undefined;
-      let instrumentPageCount = 0; 
+      let instrumentPageCount = 0;
 
       console.log('[DataProvider] Starting instrument fetch loop...');
       do {
@@ -116,8 +119,8 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.log(`[DataProvider] Fetching instrument page ${instrumentPageCount}, cursor: ${cursor ?? 'none'}`);
         const instrumentsResponse = await bybitClient.getOptionInstruments({
           baseCoin: 'BTC',
-          limit: 500, 
-          cursor: cursor, 
+          limit: 500,
+          cursor: cursor,
         });
 
         if (instrumentsResponse.retCode !== 0) {
@@ -129,15 +132,15 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
           allInstruments = allInstruments.concat(instrumentsResponse.result.list);
           console.log(`[DataProvider] Fetched ${instrumentsResponse.result.list.length} instruments on page ${instrumentPageCount}. Total so far: ${allInstruments.length}`);
         } else {
-           console.warn(`[DataProvider] No instruments list found on page ${instrumentPageCount}.`);
+          console.warn(`[DataProvider] No instruments list found on page ${instrumentPageCount}.`);
         }
 
-        cursor = instrumentsResponse.result?.nextPageCursor; 
+        cursor = instrumentsResponse.result?.nextPageCursor;
 
-      } while (cursor); 
+      } while (cursor);
 
       console.log(`[DataProvider] Finished instrument fetch loop. Total instruments fetched: ${allInstruments.length}`);
-      
+
       // --- Fetch Tickers (Single Call) ---
       setLoadingMessage('Fetching tickers using baseCoin=BTC...');
       console.log('[DataProvider] Fetching all BTC option tickers using baseCoin=BTC...');
@@ -181,7 +184,7 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       const rawDeliveryTimes = allInstruments.map(inst => inst.deliveryTime);
-      console.log('[DataProvider] Raw Delivery Times from API (All Pages):', rawDeliveryTimes.length); 
+      console.log('[DataProvider] Raw Delivery Times from API (All Pages):', rawDeliveryTimes.length);
 
       const allOptions = allInstruments.map((inst): OptionData | undefined => {
         const ticker = tickerMap.get(normalizeSymbol(inst.symbol));
@@ -197,8 +200,8 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
           strike: strike,
           type: inst.optionsType.toLowerCase() as 'call' | 'put',
           expiry: expiry,
-          markPrice: safeParseFloat(ticker.markPrice), 
-          iv: safeParseFloat(ticker.markIv),         
+          markPrice: safeParseFloat(ticker.markPrice),
+          iv: safeParseFloat(ticker.markIv),
           delta: safeParseFloat(ticker.delta),
           gamma: safeParseFloat(ticker.gamma),
           theta: safeParseFloat(ticker.theta),
@@ -215,18 +218,17 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
       const puts = allOptions.filter(o => o.type === 'put');
       const rawExp = allOptions.map(o => o.expiry);
 
-      console.log('[DataProvider] Processed Expiry Dates (before unique, all pages):', rawExp.length); 
+      console.log('[DataProvider] Processed Expiry Dates (before unique, all pages):', rawExp.length);
 
       const uniqueExp = Array.from(new Set(rawExp)).sort();
 
       console.log('[DataProvider] Final Unique Expiry Dates (All Pages):', uniqueExp);
 
-
       setCallOptions(calls);
       setPutOptions(puts);
       setExpirations(uniqueExp);
       if ((!uniqueExp.includes(selectedExpiry) || selectedExpiry === 'all') && uniqueExp.length) {
-         console.log(`[DataProvider] Resetting selected expiry from ${selectedExpiry} to ${uniqueExp[0]}`);
+        console.log(`[DataProvider] Resetting selected expiry from ${selectedExpiry} to ${uniqueExp[0]}`);
         setSelectedExpiry(uniqueExp[0]);
       }
       console.log(`[DataProvider] Loaded ${calls.length} calls, ${puts.length} puts for ${uniqueExp.length} expirations (All Pages).`);
@@ -239,17 +241,16 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, []); 
-
+  }, []);
 
   // Initial data load
   useEffect(() => {
     const initialLoad = async () => {
       const price = await fetchBtcSpotPrice();
-      if (price !== null) { 
-          setCurrentPrice(price);
+      if (price !== undefined) {
+        setCurrentPrice(price);
       } else {
-          setError("Failed to fetch initial BTC price.");
+        setError("Failed to fetch initial BTC price.");
       }
       await loadOptionsData();
     };
@@ -257,16 +258,15 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
     initialLoad();
   }, [loadOptionsData]);
 
-
   // Fetch BTC price periodically
   useEffect(() => {
     const fetchAndUpdatePrice = async () => {
-        const price = await fetchBtcSpotPrice();
-        if (price !== null) {
-            setCurrentPrice(price);
-        } else {
-            console.warn("Periodic BTC price update failed.");
-        }
+      const price = await fetchBtcSpotPrice();
+      if (price !== undefined) {
+        setCurrentPrice(price);
+      } else {
+        console.warn("Periodic BTC price update failed.");
+      }
     };
 
     const intervalId = setInterval(fetchAndUpdatePrice, 5000);
@@ -274,19 +274,17 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => clearInterval(intervalId);
   }, []);
 
-
   const refreshData = useCallback(async () => {
     console.log('[DataProvider] Refreshing options data...');
     setLoading(true);
     const price = await fetchBtcSpotPrice();
-    if (price !== null) {
-        setCurrentPrice(price);
+    if (price !== undefined) {
+      setCurrentPrice(price);
     } else {
-        console.warn("Refresh failed to update BTC price.");
+      console.warn("Refresh failed to update BTC price.");
     }
     await loadOptionsData();
   }, [loadOptionsData]);
-
 
   return (
     <OptionsContext.Provider value={{
@@ -299,7 +297,7 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
       loading,
       error,
       loadingMessage,
-      refreshData, 
+      refreshData,
     }}>
       {children}
     </OptionsContext.Provider>

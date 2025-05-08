@@ -59,9 +59,9 @@ export interface BybitApiResponse<T> {
 export interface OptionOrderParams {
   symbol: string;
   side: 'Buy' | 'Sell';
-  qty: number;
-  price?: number;
-  orderType?: 'Market' | 'Limit';
+  qty: string;
+  price?: string;
+  orderType: 'Market' | 'Limit';
   timeInForce?: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
   orderLinkId?: string; // 注文を識別するための一意のID
 }
@@ -178,7 +178,7 @@ export const bybitClient = {
         category: 'option',
         symbol: params.symbol,
         side: params.side,
-        orderType: params.orderType ?? (params.price !== undefined ? 'Limit' : 'Market'),
+        orderType: params.orderType,
         qty: params.qty.toString(),
         ...(params.price !== undefined ? { price: params.price.toString() } : {}),
         timeInForce: params.timeInForce ?? 'GTC',

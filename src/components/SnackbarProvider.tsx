@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
-type SnackbarType = 'success' | 'error' | 'info';
+export type SnackbarType = 'success' | 'error' | 'info';
 
 interface SnackbarContextType {
   showSnackbar: (message: string, type: SnackbarType) => void;

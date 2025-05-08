@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import OptionsChart from '../OptionsChart/OptionsChart';
 import OptionTradePanel from '../OptionTradePanel';
-import { OptionData } from '../../mockData/optionsMock';
-import { useOptions } from '../../providers/OptionsDataProvider';
+import { OptionData, useOptions } from '../../providers/OptionsDataProvider'; // Consolidated import
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useSnackbar } from '../SnackbarProvider';
 import './OptionsVisualization.css';
 import { ChartStyles } from '../OptionsChart/colorUtils';
 
@@ -27,13 +28,12 @@ const OptionsVisualization: React.FC = () => {
   const {
     callOptions,
     putOptions,
-    expirations,
+    expirations, // Use this for expiry dates
     currentPrice,
     selectedExpiry,
     setSelectedExpiry,
     loading,
     error,
-    refreshData
   } = useOptions();
 
   const [activeTab, setActiveTab] = useState<'call' | 'put'>('call');
@@ -41,21 +41,33 @@ const OptionsVisualization: React.FC = () => {
   const [tradePanelVisible, setTradePanelVisible] = useState<boolean>(false);
   const [selectedOptionDetail, setSelectedOptionDetail] = useState<OptionData | null>(null);
 
+  // Wallet & Snackbar contexts for OptionTradePanel
+  const wallet = useWallet();
+  const { showSnackbar } = useSnackbar();
+
   // 初期化時に最初の満期日を選択
   useEffect(() => {
-    if (expirations.length > 0 && !selectedExpiry) {
-      setSelectedExpiry(expirations[0]);
+    // Use 'expirations' from the provider
+    if (expirations && expirations.length > 0 && !selectedExpiry) {
+      // If no expiry is selected yet, and expirations are available, select the first one.
+      // The provider already sorts expirations and handles the 'all' case if needed.
+      if (expirations[0] !== 'all') { // Ensure 'all' is not auto-selected if it's a placeholder
+        setSelectedExpiry(expirations[0]);
+      }
+    } else if (expirations && expirations.length > 0 && selectedExpiry && !expirations.includes(selectedExpiry)) {
+      // If current selectedExpiry is not in the list (e.g., after data refresh), select the first valid one.
+      setSelectedExpiry(expirations[0] === 'all' && expirations.length > 1 ? expirations[1] : expirations[0]);
     }
   }, [expirations, selectedExpiry, setSelectedExpiry]);
 
   // フィルタリングロジック
   useEffect(() => {
-    const optionsData = activeTab === 'call' ? callOptions : putOptions;
+    const sourceOptions = activeTab === 'call' ? callOptions : putOptions;
 
     // 満期でフィルタリング
     let filtered = selectedExpiry === 'all'
-      ? optionsData
-      : optionsData.filter(opt => opt.expiry === selectedExpiry);
+      ? sourceOptions
+      : sourceOptions.filter((opt: OptionData) => opt.expiry === selectedExpiry);
 
     setFilteredOptions(filtered);
   }, [activeTab, selectedExpiry, callOptions, putOptions]);
@@ -101,9 +113,10 @@ const OptionsVisualization: React.FC = () => {
           All
         </button>
 
-        {expirations && expirations.length > 0 ? expirations.map((exp, index) => {
+        {/* Use 'expirations' from the provider directly */}
+        {expirations && expirations.length > 0 ? expirations.map((exp: string, index: number) => {
           // 満期日データのnullチェック
-          if (!exp) return null;
+          if (!exp || exp === 'all') return null; // Skip 'all' if it's part of the list for UI buttons
 
           // 安全に日付をフォーマット
           const formattedDate = formatExpiryDate(exp);
@@ -126,7 +139,7 @@ const OptionsVisualization: React.FC = () => {
         {filteredOptions && filteredOptions.length > 0 ? (
           <OptionsChart
             data={filteredOptions}
-            currentPrice={currentPrice}
+            currentPrice={currentPrice ?? 0} // currentPriceがundefinedなら0を渡す
             width={800}
             height={500}
             onOptionSelect={handleOptionSelect}
@@ -143,11 +156,16 @@ const OptionsVisualization: React.FC = () => {
       ) : error ? (
         <div className="error-message">Error loading chart data: {error}</div>
       ) : (
-        <OptionTradePanel
-          option={selectedOptionDetail}
-          visible={tradePanelVisible}
-          onClose={() => setTradePanelVisible(false)}
-        />
+        tradePanelVisible && selectedOptionDetail && (
+          <div className="option-trade-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setTradePanelVisible(false); setSelectedOptionDetail(null); } }}>
+            <OptionTradePanel
+              option={selectedOptionDetail}
+              wallet={wallet}
+              showSnackbar={showSnackbar}
+              onClose={() => setTradePanelVisible(false)}
+            />
+          </div>
+        )
       )}
     </div>
   );

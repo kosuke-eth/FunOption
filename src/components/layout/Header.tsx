@@ -30,6 +30,9 @@ export default function Header() {
             </Link>
           </div>
           <div className="flex gap-5 items-center">
+            <Link to="/ai-chat" className="text-white">
+              AI Chat
+            </Link>
             <Link to="/profile" className="text-white">
               History
             </Link>

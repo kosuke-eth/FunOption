@@ -5,7 +5,7 @@ export interface RawOrderHistoryEntry {
   clientOrderId?: string; // Client-supplied order ID, if you send one to Bybit
 
   symbol: string; // Market symbol, e.g., "BTCUSDT-7MAY25-91000-C"
-  productType: 'USDTオプション' | 'USDCオプション' | string; // Product type, e.g., "USDTオプション"
+  productType: 'USDT Option' | 'USDC Option' | string; // Product type, e.g., "USDT Option"
 
   orderType: 'Limit' | 'Market'; // The actual type of the order
   side: 'Buy' | 'Sell'; // Direction of the trade
