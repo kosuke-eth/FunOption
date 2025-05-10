@@ -1,5 +1,3 @@
-import cn from "../../utils/cn";
-
 export default function Body({
   className,
   ...props
@@ -8,7 +6,7 @@ export default function Body({
     <>
       <div className="bg-dark">
         <div
-          className={cn("max-w-7xl mx-auto px-6 relative", className)}
+          className={"max-w-7xl mx-auto px-6 relative"}
           {...props}
         >
           {props.children}
