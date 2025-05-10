@@ -44,13 +44,13 @@ const OptionsVisualization: React.FC = () => {
     BTC: number;
     ETH: number;
     SOL: number;
-  }>({ 
+  }>({
     BTC: currentPrice || 0,
     ETH: 0,
     SOL: 0
   });
   const [cryptoDataLoading, setCryptoDataLoading] = useState<boolean>(false);
-  
+
   const [activeTab, setActiveTab] = useState<'call' | 'put'>('call');
   const [filteredOptions, setFilteredOptions] = useState<OptionData[]>([]);
   const [tradePanelVisible, setTradePanelVisible] = useState<boolean>(false);
@@ -74,31 +74,34 @@ const OptionsVisualization: React.FC = () => {
       setSelectedExpiry(expirations[0] === 'all' && expirations.length > 1 ? expirations[1] : expirations[0]);
     }
   }, [expirations, selectedExpiry, setSelectedExpiry]);
-  
-  // 複数の暗号通貨の価格データを取得
+
+  // 複数の暗号通貨のリアルタイム価格データを取得
   useEffect(() => {
-    const fetchCryptoPrices = async () => {
+    const fetchRealtimePrices = async () => {
       setCryptoDataLoading(true);
       try {
-        const marketData = await bybitClient.getMarketDataMultiple(['BTCUSDT', 'ETHUSDT', 'SOLUSDT']);
-        
-        // 各暗号通貨の最新価格を抽出
+        // USDC建ての暗号通貨価格を取得（より正確な市場価格）
+        const priceData = await bybitClient.getRealtimePrices(['BTCUSDC', 'ETHUSDC', 'SOLUSDC']);
+
+        // 各暗号通貨の最新価格を設定
         setCryptoPrices({
-          BTC: parseFloat(marketData['BTCUSDT']?.list[0]?.lastPrice || '0'),
-          ETH: parseFloat(marketData['ETHUSDT']?.list[0]?.lastPrice || '0'),
-          SOL: parseFloat(marketData['SOLUSDT']?.list[0]?.lastPrice || '0')
+          BTC: priceData['BTCUSDC'] || 0,
+          ETH: priceData['ETHUSDC'] || 0,
+          SOL: priceData['SOLUSDC'] || 0
         });
+        
+        console.log('リアルタイム価格取得成功:', priceData);
       } catch (error) {
-        console.error('暗号通貨価格データの取得に失敗しました:', error);
+        console.error('リアルタイム価格データの取得に失敗しました:', error);
       } finally {
         setCryptoDataLoading(false);
       }
     };
-    
-    fetchCryptoPrices();
-    
-    // 価格データを定期的に更新（1分ごと）
-    const intervalId = setInterval(fetchCryptoPrices, 60000);
+
+    fetchRealtimePrices();
+
+    // 価格データを定期的に更新（30秒ごと - より頻繁に更新）
+    const intervalId = setInterval(fetchRealtimePrices, 30000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -124,21 +127,30 @@ const OptionsVisualization: React.FC = () => {
     <div className="options-visualization-container">
 
       {/* Tab Switching */}
-      <div className="tabs">
-        <button
-          className={`tab ${activeTab === 'call' ? 'active' : ''}`}
-          onClick={() => setActiveTab('call')}
-          style={activeTab === 'call' ? { backgroundColor: ChartStyles.colors.call, color: '#fff' } : {}}
-        >
-          Call Options
-        </button>
-        <button
-          className={`tab ${activeTab === 'put' ? 'active' : ''}`}
-          onClick={() => setActiveTab('put')}
-          style={activeTab === 'put' ? { backgroundColor: ChartStyles.colors.put, color: '#fff' } : {}}
-        >
-          Put Options
-        </button>
+      <div className="flex justify-between items-center">
+        <div className="tabs flex justify-center items-center space-x-1">
+          <button
+            className={`tab ${activeTab === 'call' ? 'active' : ''}`}
+            onClick={() => setActiveTab('call')}
+            style={activeTab === 'call' ? { backgroundColor: ChartStyles.colors.call, color: '#fff' } : {}}
+          >
+            Call Options
+          </button>
+          <button
+            className={`tab ${activeTab === 'put' ? 'active' : ''}`}
+            onClick={() => setActiveTab('put')}
+            style={activeTab === 'put' ? { backgroundColor: ChartStyles.colors.put, color: '#fff' } : {}}
+          >
+            Put Options
+          </button>
+        </div>
+        {/* 暗号通貨選択コンポーネント */}
+        <CryptoSelector
+          selectedCrypto={selectedCrypto}
+          cryptoPrices={cryptoPrices}
+          onChange={setSelectedCrypto}
+          loading={cryptoDataLoading}
+        />
       </div>
 
       {/* Date Selection Buttons */}
@@ -171,14 +183,6 @@ const OptionsVisualization: React.FC = () => {
           );
         }) : <span className="no-data-message">Loading expiration date data...</span>}
       </div>
-
-      {/* 暗号通貨選択コンポーネント */}
-      <CryptoSelector 
-        selectedCrypto={selectedCrypto}
-        cryptoPrices={cryptoPrices}
-        onChange={setSelectedCrypto}
-        loading={cryptoDataLoading}
-      />
 
       {/* Options Chart */}
       <div className="chart-container">

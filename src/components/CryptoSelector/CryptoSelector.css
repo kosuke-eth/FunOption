@@ -5,14 +5,12 @@
   margin-bottom: 16px;
   justify-content: center;
   padding: 10px;
-  background-color: #1e2227;
   border-radius: 6px;
 }
 
 .crypto-button {
   padding: 8px 16px;
   border-radius: 4px;
-  background-color: #2a2e36;
   border: none;
   color: #adadad;
   cursor: pointer;

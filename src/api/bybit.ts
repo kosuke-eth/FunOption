@@ -158,7 +158,45 @@ export const bybitClient = {
     return request<GetTickersResult>('/v5/market/tickers', { qs });
   },
 
-  // 複数の暗号通貨のマーケットデータを同時に取得
+  // 暗号通貨のリアルタイム価格を取得するための専用関数
+  async getRealtimePrice(symbol: string): Promise<number> {
+    try {
+      // 正しいエンドポイントとカテゴリを使用
+      // spotカテゴリで現物取引価格を取得
+      const qs = `category=spot&symbol=${symbol}`;
+      const response = await request<any>('/v5/market/tickers', { qs });
+      
+      console.log(`${symbol}のレスポンス:`, response);
+      
+      if (response.retCode === 0 && response.result && response.result.list && response.result.list[0]) {
+        // lastPriceを確実に数値として返す
+        return parseFloat(response.result.list[0].lastPrice || '0');
+      }
+      return 0;
+    } catch (error) {
+      console.error(`リアルタイム価格の取得に失敗しました (${symbol}):`, error);
+      return 0;
+    }
+  },
+
+  // 複数の暗号通貨のリアルタイム価格を取得
+  async getRealtimePrices(symbols: string[] = ['BTCUSDC', 'ETHUSDC', 'SOLUSDC']): Promise<{ [symbol: string]: number }> {
+    const results: { [symbol: string]: number } = {};
+    
+    for (const symbol of symbols) {
+      try {
+        const price = await this.getRealtimePrice(symbol);
+        results[symbol] = price;
+      } catch (error) {
+        console.error(`${symbol}のリアルタイム価格取得に失敗しました:`, error);
+        results[symbol] = 0;
+      }
+    }
+    
+    return results;
+  },
+  
+  // 複数の暗号通貨のマーケットデータを同時に取得（従来のメソッド - 互換性のために残す）
   async getMarketDataMultiple(symbols: string[] = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']): Promise<{ [symbol: string]: any }> {
     const results: { [symbol: string]: any } = {};
     

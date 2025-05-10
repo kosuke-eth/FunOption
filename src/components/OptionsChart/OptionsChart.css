@@ -185,7 +185,6 @@
 .tabs {
   display: flex;
   gap: 2px;
-  margin-bottom: 16px;
 }
 
 .tab {
