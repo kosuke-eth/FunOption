@@ -1,8 +1,0 @@
-@import 'react-datepicker/dist/react-datepicker.css';
-
-/* Override selected date color to current price color */
-.react-datepicker__day--selected,
-.react-datepicker__day--keyboard-selected {
-  background-color: #e0b84d !important;
-  color: white !important;
-}
