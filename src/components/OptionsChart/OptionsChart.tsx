@@ -7,6 +7,7 @@ import { getIntensityColor, ChartStyles } from './colorUtils';
 interface OptionsChartProps {
   data: OptionData[];
   currentPrice: number;
+  cryptoSymbol?: 'BTC' | 'ETH' | 'SOL'; // 表示する暗号通貨のシンボル
   width?: number;
   height?: number;
   onOptionSelect?: (option: OptionData) => void;
@@ -19,6 +20,7 @@ interface OptionsChartProps {
 const OptionsChart: React.FC<OptionsChartProps> = ({
   data,
   currentPrice,
+  cryptoSymbol = 'BTC', // デフォルト値をBTCに設定
   width = 960,
   height = 600,
   onOptionSelect,
@@ -503,7 +505,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('y', -6) // Position above the top margin line
         .attr('fill', ChartStyles.colors.currentPrice)
         .attr('font-size', ChartStyles.sizes.fontSize.small)
-        .text(`BTC: ${formatCurrency(currentPrice)}`); // Corrected typo here
+        .text(`${cryptoSymbol}: ${formatCurrency(currentPrice)}`); // 選択された暗号通貨シンボルを表示
     } else {
       console.warn('[Chart] Skipping current price line/text: Invalid currentPrice or strike domain.');
     }

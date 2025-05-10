@@ -158,10 +158,50 @@ export const bybitClient = {
     return request<GetTickersResult>('/v5/market/tickers', { qs });
   },
 
+  // 複数の暗号通貨のマーケットデータを同時に取得
+  async getMarketDataMultiple(symbols: string[] = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']): Promise<{ [symbol: string]: any }> {
+    const results: { [symbol: string]: any } = {};
+    
+    for (const symbol of symbols) {
+      try {
+        const response = await this.getMarketData(symbol);
+        if (response.retCode === 0) {
+          results[symbol] = response.result;
+        }
+      } catch (error) {
+        console.error(`${symbol}のマーケットデータ取得に失敗しました:`, error);
+      }
+    }
+    
+    return results;
+  },
+
   // K線データを取得
   async getKlineData(symbol: string = 'BTCUSDT', interval: string = '1d', limit: number = 200): Promise<BybitApiResponse<GetTickersResult>> {
     const qs = `category=spot&symbol=${symbol}&interval=${interval}&limit=${limit}`;
     return request<GetTickersResult>('/v5/market/kline', { qs });
+  },
+  
+  // 複数の暗号通貨のK線データを同時に取得
+  async getKlineDataMultiple(
+    symbols: string[] = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'], 
+    interval: string = '1d', 
+    limit: number = 200
+  ): Promise<{ [symbol: string]: any }> {
+    const results: { [symbol: string]: any } = {};
+    
+    for (const symbol of symbols) {
+      try {
+        const response = await this.getKlineData(symbol, interval, limit);
+        if (response.retCode === 0) {
+          results[symbol] = response.result;
+        }
+      } catch (error) {
+        console.error(`${symbol}のK線データ取得に失敗しました:`, error);
+      }
+    }
+    
+    return results;
   },
 
   // アカウント情報を取得

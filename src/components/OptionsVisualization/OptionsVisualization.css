@@ -192,3 +192,42 @@
   background: #3a3f48;
   border-radius: 10px;
 }
+
+/* 暗号通貨選択ボタン用スタイル */
+.crypto-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  justify-content: center;
+  padding: 10px;
+  background-color: #1e2227;
+  border-radius: 6px;
+}
+
+.crypto-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background-color: #2a2e36;
+  border: none;
+  color: #adadad;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.crypto-button:hover {
+  background-color: #3a3f48;
+  color: #ffffff;
+}
+
+.crypto-button.active {
+  background-color: #e0b84d;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.crypto-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

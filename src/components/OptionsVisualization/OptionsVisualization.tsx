@@ -6,6 +6,8 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useSnackbar } from '../SnackbarProvider';
 import './OptionsVisualization.css';
 import { ChartStyles } from '../OptionsChart/colorUtils';
+import { bybitClient } from '../../api/bybit';
+import CryptoSelector from '../CryptoSelector/CryptoSelector';
 
 // 日付をフォーマットするヘルパー関数 (YYYY-MM-DD -> DD-MM-YY)
 const formatExpiryDate = (dateStr: string): string => {
@@ -36,6 +38,19 @@ const OptionsVisualization: React.FC = () => {
     error,
   } = useOptions();
 
+  // 暗号通貨の選択と価格データ管理のための状態
+  const [selectedCrypto, setSelectedCrypto] = useState<'BTC' | 'ETH' | 'SOL'>('BTC');
+  const [cryptoPrices, setCryptoPrices] = useState<{
+    BTC: number;
+    ETH: number;
+    SOL: number;
+  }>({ 
+    BTC: currentPrice || 0,
+    ETH: 0,
+    SOL: 0
+  });
+  const [cryptoDataLoading, setCryptoDataLoading] = useState<boolean>(false);
+  
   const [activeTab, setActiveTab] = useState<'call' | 'put'>('call');
   const [filteredOptions, setFilteredOptions] = useState<OptionData[]>([]);
   const [tradePanelVisible, setTradePanelVisible] = useState<boolean>(false);
@@ -59,6 +74,33 @@ const OptionsVisualization: React.FC = () => {
       setSelectedExpiry(expirations[0] === 'all' && expirations.length > 1 ? expirations[1] : expirations[0]);
     }
   }, [expirations, selectedExpiry, setSelectedExpiry]);
+  
+  // 複数の暗号通貨の価格データを取得
+  useEffect(() => {
+    const fetchCryptoPrices = async () => {
+      setCryptoDataLoading(true);
+      try {
+        const marketData = await bybitClient.getMarketDataMultiple(['BTCUSDT', 'ETHUSDT', 'SOLUSDT']);
+        
+        // 各暗号通貨の最新価格を抽出
+        setCryptoPrices({
+          BTC: parseFloat(marketData['BTCUSDT']?.list[0]?.lastPrice || '0'),
+          ETH: parseFloat(marketData['ETHUSDT']?.list[0]?.lastPrice || '0'),
+          SOL: parseFloat(marketData['SOLUSDT']?.list[0]?.lastPrice || '0')
+        });
+      } catch (error) {
+        console.error('暗号通貨価格データの取得に失敗しました:', error);
+      } finally {
+        setCryptoDataLoading(false);
+      }
+    };
+    
+    fetchCryptoPrices();
+    
+    // 価格データを定期的に更新（1分ごと）
+    const intervalId = setInterval(fetchCryptoPrices, 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // フィルタリングロジック
   useEffect(() => {
@@ -130,19 +172,28 @@ const OptionsVisualization: React.FC = () => {
         }) : <span className="no-data-message">Loading expiration date data...</span>}
       </div>
 
+      {/* 暗号通貨選択コンポーネント */}
+      <CryptoSelector 
+        selectedCrypto={selectedCrypto}
+        cryptoPrices={cryptoPrices}
+        onChange={setSelectedCrypto}
+        loading={cryptoDataLoading}
+      />
+
       {/* Options Chart */}
       <div className="chart-container">
         {filteredOptions && filteredOptions.length > 0 ? (
           <OptionsChart
             data={filteredOptions}
-            currentPrice={currentPrice ?? 0} // currentPriceがundefinedなら0を渡す
+            currentPrice={cryptoPrices[selectedCrypto] || 0} // 選択された暗号通貨の価格を渡す
+            cryptoSymbol={selectedCrypto} // 追加: 暗号通貨のシンボルも渡す
             width={800}
             height={500}
             onOptionSelect={handleOptionSelect}
           />
         ) : (
           <div className="no-data-container">
-            <p>No data to display. Please select a different expiration date.</p>
+            <p>表示するデータがありません。他の満期日を選択してください。</p>
           </div>
         )}
       </div>
