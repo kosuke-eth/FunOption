@@ -78,10 +78,6 @@ const OptionsVisualization: React.FC = () => {
     setTradePanelVisible(true);
   };
 
-  if (loading) {
-    return <div className="loading-indicator">Loading Options Data...</div>;
-  }
-
   return (
     <div className="options-visualization-container">
 
