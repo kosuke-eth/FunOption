@@ -16,7 +16,6 @@ if (!(process as any).version) {
 }
 
 import { createRoot } from "react-dom/client";
-import "./appkit.ts";
 import "./index.css";
 import App from "./App.tsx";
 
