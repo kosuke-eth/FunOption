@@ -7,9 +7,9 @@ import { bybitClient } from '../../api/bybit';
 
 // Helper function to determine if an option has poor Risk/Reward
 const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
-  if (option.delta === null) return true; // Cannot calculate if delta is missing
+  if (option.delta === null || option.delta === undefined) return true; // Cannot calculate if delta is missing
 
-  const markPriceNum = option.markPrice !== null ? parseFloat(option.markPrice) : NaN;
+  const markPriceNum = option.markPrice !== null && option.markPrice !== undefined ? parseFloat(String(option.markPrice)) : NaN;
   if (isNaN(markPriceNum)) return true; // Cannot calculate if markPrice is not a valid number
 
   const intrinsic = option.type === 'call'
@@ -17,7 +17,7 @@ const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
     : Math.max(0, option.strike - currentPrice);
   const timeValue = Math.max(0, markPriceNum - intrinsic);
   const timeValPct = (timeValue / (markPriceNum === 0 ? 1 : markPriceNum)) * 100; // Avoid division by zero
-  const rrRaw = (Math.abs(option.delta * 100) - timeValPct);
+  const rrRaw = (Math.abs((option.delta || 0) * 100) - timeValPct);
   return rrRaw < -10;
 };
 
@@ -92,13 +92,13 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
     : baseOptions.filter(option => option.expiry === selectedExpiry);
 
   let chartConditionOptions: OptionData[] = [];
-  if (currentPrice !== null) {
+  if (currentPrice !== null && currentPrice !== undefined) {
     chartConditionOptions = filteredByExpiry
       .filter(option => {
-        return Math.abs(option.strike - currentPrice) / currentPrice < 0.2;
+        return Math.abs(option.strike - (currentPrice || 0)) / (currentPrice || 1) < 0.2;
       })
       .filter(option => {
-        return !isPoorRR(option, currentPrice);
+        return !isPoorRR(option, currentPrice || 0);
       })
       .sort((a, b) => (b.volume || 0) - (a.volume || 0))
       .slice(0, 15);

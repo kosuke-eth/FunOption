@@ -173,6 +173,7 @@ export const getOptionsByExpiry = async (expiry: string): Promise<OptionData[]> 
       const oiChange = Math.round(Math.random() * 20);
       
       options.push({
+        symbol: `BTC-${expiry}-${strike}-${type.charAt(0).toUpperCase()}`, // symbol形式：BTC-YYMMDD-STRIKE-C/P
         strike,
         markPrice,
         iv,
@@ -233,17 +234,17 @@ const enhanceOptionsData = (options: OptionData[], currentPrice: number): Option
       const distanceScore = Math.max(0, 100 - (distanceFromCurrent / 1000) * 10);
 
       // デルタスコア - 0.3-0.6の範囲が高評価
-      const absOptionDelta = Math.abs(option.delta);
+      const absOptionDelta = Math.abs(option.delta || 0);
       const deltaScore = absOptionDelta >= 0.3 && absOptionDelta <= 0.6 
         ? 100 
         : 50 * (1 - Math.abs(absOptionDelta - 0.45) / 0.45);
 
       // プレミアムスコア
-      const fairPremium = Math.max(0.1, option.delta * distanceFromCurrent * 0.1);
-      const premiumScore = Math.max(0, 100 - Math.abs(option.markPrice - fairPremium) / fairPremium * 100);
+      const fairPremium = Math.max(0.1, (option.delta || 0) * distanceFromCurrent * 0.1);
+      const premiumScore = Math.max(0, 100 - Math.abs((option.markPrice || 0) - fairPremium) / fairPremium * 100);
 
       // 流動性スコア
-      const volumeScore = Math.min(100, option.volume / 10);
+      const volumeScore = Math.min(100, (option.volume || 0) / 10);
 
       // 総合スコア
       const totalScore = (
@@ -281,14 +282,17 @@ const enhanceOptionsData = (options: OptionData[], currentPrice: number): Option
       const buyScore = calculateBuyScore(sanitizedOption, currentPrice);
 
       // 理論価格の計算
-      const fairPremium = Math.max(0.1, sanitizedOption.delta * Math.abs(sanitizedOption.strike - currentPrice) * 0.1);
+      const fairPremium = Math.max(0.1, (sanitizedOption.delta || 0) * Math.abs(sanitizedOption.strike - (currentPrice || 0)) * 0.1);
 
       // プレミアム異常値
-      const premiumAnomaly = calculatePremiumAnomaly({ ...sanitizedOption, fairPremium });
+      const premiumAnomaly = calculatePremiumAnomaly({ 
+        markPrice: sanitizedOption.markPrice || 0, 
+        fairPremium: fairPremium 
+      });
 
       // アラート情報
       const alerts = {
-        isInDecisionZone: Math.abs(sanitizedOption.delta) >= 0.3 && Math.abs(sanitizedOption.delta) <= 0.6,
+        isInDecisionZone: Math.abs(sanitizedOption.delta || 0) >= 0.3 && Math.abs(sanitizedOption.delta || 0) <= 0.6,
         isUnderpriced: premiumAnomaly < -30,
         isOverpriced: premiumAnomaly > 30,
         hasVolumeSpike: sanitizedOption.volumeChange > 50,
@@ -308,6 +312,7 @@ const enhanceOptionsData = (options: OptionData[], currentPrice: number): Option
       // エラー発生時は、最小限のデータを返す
       return {
         ...option,
+        symbol: option.symbol || 'BTC-UNKNOWN',
         strike: option.strike || 90000,
         markPrice: option.markPrice || 5000,
         iv: option.iv || 50,

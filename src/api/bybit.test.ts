@@ -21,8 +21,8 @@ describe('createOptionOrder', () => {
     const params: OptionOrderParams = {
       symbol: 'BTC-31MAY24-60000-C',
       side: 'Buy',
-      qty: 0.1,
-      price: 1000,
+      qty: '0.1',
+      price: '1000',
       orderType: 'Limit',
       timeInForce: 'GTC',
     };
@@ -39,8 +39,8 @@ describe('createOptionOrder', () => {
       symbol: params.symbol,
       side: params.side,
       orderType: params.orderType,
-      qty: params.qty.toString(),
-      price: params.price!.toString(),
+      qty: String(params.qty),
+      price: String(params.price!),
       timeInForce: params.timeInForce,
     }));
   });
@@ -57,7 +57,9 @@ describe('createOptionOrder', () => {
     const params: OptionOrderParams = {
       symbol: 'BTC-31MAY24-60000-C',
       side: 'Sell',
-      qty: 0.2,
+      qty: '0.2',
+      orderType: 'Market',
+      timeInForce: 'IOC',
     };
 
     await expect(bybitClient.createOptionOrder(params)).rejects.toThrow(/failed \(400\): Bad Request/);

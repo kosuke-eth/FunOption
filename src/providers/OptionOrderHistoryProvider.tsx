@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { bybitClient, GetOrderHistoryResult, OrderHistoryRecord } from '../api/bybit';
+import { bybitClient, GetOrderHistoryResult, OrderHistoryRecord, BybitApiResponse } from '../api/bybit';
 
 interface OptionOrderHistoryContextType {
   history: OrderHistoryRecord[];
@@ -25,7 +25,7 @@ export const OptionOrderHistoryProvider: React.FC<{ children: ReactNode }> = ({ 
     setLoading(true);
     setError(null);
     try {
-      const res: GetOrderHistoryResult = await bybitClient.getOptionOrderHistory();
+      const res: BybitApiResponse<{ list: OrderHistoryRecord[] }> = await bybitClient.getOptionOrderHistory();
       if (res.retCode === 0) {
         setHistory(res.result.list);
       } else {

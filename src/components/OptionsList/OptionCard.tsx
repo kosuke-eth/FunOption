@@ -16,11 +16,11 @@ const OptionCard: React.FC<OptionCardProps> = ({
   onPurchaseClick,
 }) => {
   const assetName = option.symbol.split('-')[0];
-  const markPriceNum = option.markPrice !== null ? parseFloat(option.markPrice) : NaN;
+  const markPriceNum = option.markPrice !== null && option.markPrice !== undefined ? parseFloat(String(option.markPrice)) : NaN;
 
   // Calculate Estimated Return
   let displayEstReturn: string;
-  if (underlyingPrice !== null && option.delta !== null && !isNaN(markPriceNum) && markPriceNum !== 0) {
+  if (underlyingPrice !== null && option.delta !== null && option.delta !== undefined && !isNaN(markPriceNum) && markPriceNum !== 0) {
     const hypotheticalPriceChange = underlyingPrice * 0.01; // 1% hypothetical change
     const estimatedOptionPriceChange = option.delta * hypotheticalPriceChange;
     const estimatedReturnPercent = (estimatedOptionPriceChange / markPriceNum) * 100;
@@ -31,7 +31,7 @@ const OptionCard: React.FC<OptionCardProps> = ({
 
   // Determine Risk Level
   let displayRiskLevel: 'Low' | 'Medium' | 'High';
-  if (option.delta !== null) {
+  if (option.delta !== null && option.delta !== undefined) {
     const absDelta = Math.abs(option.delta);
     if (absDelta < 0.3) {
       displayRiskLevel = 'High';
