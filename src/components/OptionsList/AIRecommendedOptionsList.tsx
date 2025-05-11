@@ -43,7 +43,7 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
   } = useOptions();
 
   const [selectedOptionType, setSelectedOptionType] = useState<'call' | 'put'>('call');
-  
+
   // 暗号通貨の選択と価格データ管理
   const [selectedCrypto, setSelectedCrypto] = useState<'BTC' | 'ETH' | 'SOL'>('BTC');
   const [cryptoPrices, setCryptoPrices] = useState<{
@@ -139,7 +139,7 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
             Put Options
           </button>
         </div>
-        
+
         {/* Crypto Selector */}
         <div className="crypto-selector-wrapper">
           <CryptoSelector
@@ -182,7 +182,7 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
           <OptionCard
             key={option.symbol}
             option={option}
-            underlyingPrice={currentPrice}
+            underlyingPrice={currentPrice ?? null}
             onPurchaseClick={onPurchaseClick}
           />
         ))}
