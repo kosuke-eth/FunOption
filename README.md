@@ -1,4 +1,4 @@
-# FunOption-test
+# FunOption
 
 A development and testing project for the **Bybit Testnet API client**.
 
