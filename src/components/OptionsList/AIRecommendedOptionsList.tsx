@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OptionData, useOptions } from 'providers/OptionsDataProvider';
 import OptionCard from './OptionCard';
 import { ChartStyles } from '../OptionsChart/colorUtils';
+import CryptoSelector from '../CryptoSelector/CryptoSelector';
+import { bybitClient } from '../../api/bybit';
 
 // Helper function to determine if an option has poor Risk/Reward
 const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
@@ -41,6 +43,47 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
   } = useOptions();
 
   const [selectedOptionType, setSelectedOptionType] = useState<'call' | 'put'>('call');
+  
+  // 暗号通貨の選択と価格データ管理
+  const [selectedCrypto, setSelectedCrypto] = useState<'BTC' | 'ETH' | 'SOL'>('BTC');
+  const [cryptoPrices, setCryptoPrices] = useState<{
+    BTC: number;
+    ETH: number;
+    SOL: number;
+  }>({
+    BTC: 0,
+    ETH: 0,
+    SOL: 0
+  });
+  const [cryptoDataLoading, setCryptoDataLoading] = useState<boolean>(false);
+
+  // 複数の暗号通貨のリアルタイム価格データを取得
+  useEffect(() => {
+    const fetchRealtimePrices = async () => {
+      setCryptoDataLoading(true);
+      try {
+        // USDC建ての暗号通貨価格を取得（より正確な市場価格）
+        const priceData = await bybitClient.getRealtimePrices(['BTCUSDC', 'ETHUSDC', 'SOLUSDC']);
+
+        // 各暗号通貨の最新価格を設定
+        setCryptoPrices({
+          BTC: priceData['BTCUSDC'] || 0,
+          ETH: priceData['ETHUSDC'] || 0,
+          SOL: priceData['SOLUSDC'] || 0
+        });
+      } catch (error) {
+        console.error('リアルタイム価格データの取得に失敗しました:', error);
+      } finally {
+        setCryptoDataLoading(false);
+      }
+    };
+
+    fetchRealtimePrices();
+
+    // 価格データを定期的に更新（30秒ごと）
+    const intervalId = setInterval(fetchRealtimePrices, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const baseOptions = selectedOptionType === 'call' ? callOptions : putOptions;
 
@@ -77,43 +120,56 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
 
   return (
     <div className="ai-recommended-options">
-      {/* Option Type (Call/Put) Filter Tabs */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedOptionType('call')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'call' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-          style={selectedOptionType === 'call' ? { backgroundColor: ChartStyles.colors.call } : {}}
-        >
-          Call Options
-        </button>
-        <button
-          onClick={() => setSelectedOptionType('put')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'put' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-          style={selectedOptionType === 'put' ? { backgroundColor: ChartStyles.colors.put } : {}}
-        >
-          Put Options
-        </button>
-      </div>
-
-      {/* Expiry Filter Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-700 pb-3">
-        <button
-          onClick={() => setSelectedExpiry('all')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
-            ${selectedExpiry === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-        >
-          All
-        </button>
-        {expirations.map(exp => (
+      {/* Filters and Selector Controls */}
+      <div className="control-wrapper mb-6 space-y-4">
+        {/* Option Type (Call/Put) Filter Tabs */}
+        <div className="mb-4 flex flex-wrap gap-2">
           <button
-            key={exp}
-            onClick={() => setSelectedExpiry(exp)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
-              ${selectedExpiry === exp ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            onClick={() => setSelectedOptionType('call')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'call' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
+            style={selectedOptionType === 'call' ? { backgroundColor: ChartStyles.colors.call } : {}}
           >
-            {exp.substring(5)}
+            Call Options
           </button>
-        ))}
+          <button
+            onClick={() => setSelectedOptionType('put')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'put' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
+            style={selectedOptionType === 'put' ? { backgroundColor: ChartStyles.colors.put } : {}}
+          >
+            Put Options
+          </button>
+        </div>
+        
+        {/* Crypto Selector */}
+        <div className="crypto-selector-wrapper">
+          <CryptoSelector
+            selectedCrypto={selectedCrypto}
+            cryptoPrices={cryptoPrices}
+            onChange={setSelectedCrypto}
+            loading={cryptoDataLoading}
+          />
+        </div>
+
+        {/* Expiry Filter Tabs */}
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-700 pb-3">
+          <button
+            onClick={() => setSelectedExpiry('all')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
+              ${selectedExpiry === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+          >
+            All
+          </button>
+          {expirations.map(exp => (
+            <button
+              key={exp}
+              onClick={() => setSelectedExpiry(exp)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
+                ${selectedExpiry === exp ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              {exp.substring(5)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {recommendedPicks.length === 0 && !loading && (
