@@ -1,7 +1,7 @@
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import HistoryPage from "pages/history";
-import OptionsPage from "pages/options"; 
-import AIAdvisorPage from "pages/AIAdvisorPage"; 
+import OptionsPage from "pages/options";
+import AIAdvisorPage from "pages/AIAdvisorPage";
 import { OptionsProvider } from "./providers/OptionsDataProvider";
 import { SnackbarProvider } from "components/SnackbarProvider";
 import { OptionTradesProvider } from "providers/OptionTradesProvider";
@@ -15,9 +15,9 @@ function App() {
           <OptionTradesProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<OptionsPage />} /> 
+                <Route path="/" element={<OptionsPage />} />
                 <Route path="/profile" element={<HistoryPage />} />
-                <Route path="/ai-chat" element={<AIAdvisorPage />} /> 
+                <Route path="/ai-chat" element={<AIAdvisorPage />} />
               </Routes>
             </BrowserRouter>
           </OptionTradesProvider>

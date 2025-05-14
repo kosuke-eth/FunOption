@@ -4,20 +4,54 @@ import OptionCard from './OptionCard';
 import { ChartStyles } from '../OptionsChart/colorUtils';
 import CryptoSelector from '../CryptoSelector/CryptoSelector';
 import { bybitClient } from '../../api/bybit';
+import OptionTypeSelector, { OptionType } from '../controls/OptionTypeSelector';
+import ExpiryDateSelector from '../controls/ExpiryDateSelector';
 
-// Helper function to determine if an option has poor Risk/Reward
+/**
+ * リスク/リワード比が悪いオプションを判定する関数
+ * 型安全性と数値変換の安全性を向上
+ */
 const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
-  if (option.delta === null || option.delta === undefined) return true; // Cannot calculate if delta is missing
+  // デルタが無効な場合はリスク/リワード計算不可
+  const delta = typeof option.delta === 'string' 
+    ? parseFloat(option.delta) 
+    : typeof option.delta === 'number' 
+      ? option.delta 
+      : null;
+  
+  if (delta === null) return true;
 
-  const markPriceNum = option.markPrice !== null && option.markPrice !== undefined ? parseFloat(String(option.markPrice)) : NaN;
-  if (isNaN(markPriceNum)) return true; // Cannot calculate if markPrice is not a valid number
+  // マークプライスの安全な変換
+  const markPriceNum = typeof option.markPrice === 'string' 
+    ? parseFloat(option.markPrice) 
+    : typeof option.markPrice === 'number' 
+      ? option.markPrice 
+      : NaN;
 
+  if (isNaN(markPriceNum) || markPriceNum <= 0) return true;
+
+  // ストライク価格の安全な変換
+  const strike = typeof option.strike === 'string'
+    ? parseFloat(option.strike)
+    : typeof option.strike === 'number'
+      ? option.strike
+      : NaN;
+
+  if (isNaN(strike)) return true;
+
+  // 本質的価値の計算
   const intrinsic = option.type === 'call'
-    ? Math.max(0, currentPrice - option.strike)
-    : Math.max(0, option.strike - currentPrice);
+    ? Math.max(0, currentPrice - strike)
+    : Math.max(0, strike - currentPrice);
+    
+  // 時間的価値の計算
   const timeValue = Math.max(0, markPriceNum - intrinsic);
-  const timeValPct = (timeValue / (markPriceNum === 0 ? 1 : markPriceNum)) * 100; // Avoid division by zero
-  const rrRaw = (Math.abs((option.delta || 0) * 100) - timeValPct);
+  const timeValPct = (timeValue / markPriceNum) * 100;
+  
+  // リスク/リワード比の計算
+  const rrRaw = (Math.abs(delta * 100) - timeValPct);
+  
+  // -10未満はリスク/リワード比が悪いと判断
   return rrRaw < -10;
 };
 
@@ -119,29 +153,17 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
   }
 
   return (
-    <div className="ai-recommended-options">
-      {/* Filters and Selector Controls */}
-      <div className="control-wrapper mb-6 space-y-4">
-        {/* Option Type (Call/Put) Filter Tabs */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedOptionType('call')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'call' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-            style={selectedOptionType === 'call' ? { backgroundColor: ChartStyles.colors.call } : {}}
-          >
-            Call Options
-          </button>
-          <button
-            onClick={() => setSelectedOptionType('put')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors text-white ${selectedOptionType !== 'put' ? 'bg-gray-700 hover:bg-gray-600' : ''}`}
-            style={selectedOptionType === 'put' ? { backgroundColor: ChartStyles.colors.put } : {}}
-          >
-            Put Options
-          </button>
-        </div>
+    <div className="w-full animate-fadeIn">
+      {/* フィルターと選択コントロール */}
+      <div className="mb-8 space-y-5">
+        {/* Option type (Call/Put) selector */}
+        <OptionTypeSelector 
+          selectedType={selectedOptionType} 
+          onChange={setSelectedOptionType} 
+        />
 
-        {/* Crypto Selector */}
-        <div className="crypto-selector-wrapper">
+        {/* 暗号資産セレクター */}
+        <div className="w-full bg-funoption-card-bg rounded-xl p-3 backdrop-blur-sm">
           <CryptoSelector
             selectedCrypto={selectedCrypto}
             cryptoPrices={cryptoPrices}
@@ -150,34 +172,24 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
           />
         </div>
 
-        {/* Expiry Filter Tabs */}
-        <div className="mb-6 flex flex-wrap gap-2 border-b border-gray-700 pb-3">
-          <button
-            onClick={() => setSelectedExpiry('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
-              ${selectedExpiry === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-          >
-            All
-          </button>
-          {expirations.map(exp => (
-            <button
-              key={exp}
-              onClick={() => setSelectedExpiry(exp)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors
-                ${selectedExpiry === exp ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-            >
-              {exp.substring(5)}
-            </button>
-          ))}
-        </div>
+        {/* Expiry date selector */}
+        <ExpiryDateSelector 
+          expirations={expirations}
+          selectedExpiry={selectedExpiry}
+          onChange={setSelectedExpiry}
+          className="border-b border-funoption-border pb-4"
+          showAllOption={true}
+        />
       </div>
 
       {recommendedPicks.length === 0 && !loading && (
-        <div className="text-center p-10 text-white">No recommended options found for {selectedExpiry === 'all' ? 'any expiry' : selectedExpiry} based on current criteria.</div>
+        <div className="text-center p-8 text-gray-400 bg-funoption-card-bg rounded-xl backdrop-blur-sm">
+          No recommended options found for {selectedExpiry === 'all' ? 'any expiry' : selectedExpiry} based on current criteria.
+        </div>
       )}
 
-      {/* Option Cards List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* オプションカードリスト */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {recommendedPicks.map(option => (
           <OptionCard
             key={option.symbol}

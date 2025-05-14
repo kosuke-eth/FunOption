@@ -7,8 +7,10 @@ import { useSnackbar } from '../SnackbarProvider';
 import { ChartStyles } from '../OptionsChart/colorUtils';
 import { bybitClient } from '../../api/bybit';
 import CryptoSelector from '../CryptoSelector/CryptoSelector';
+import OptionTypeSelector, { OptionType } from '../controls/OptionTypeSelector';
+import ExpiryDateSelector from '../controls/ExpiryDateSelector';
 
-// 日付をフォーマットするヘルパー関数 (YYYY-MM-DD -> DD-MM-YY)
+// Helper function to format dates (YYYY-MM-DD -> DD-MM-YY)
 const formatExpiryDate = (dateStr: string): string => {
   try {
     const date = new Date(dateStr + 'T00:00:00Z'); // Assume UTC date
@@ -116,7 +118,7 @@ const OptionsVisualization: React.FC = () => {
     setFilteredOptions(filtered);
   }, [activeTab, selectedExpiry, callOptions, putOptions]);
 
-  // オプション選択ハンドラー
+  // Option selection handler
   const handleOptionSelect = (option: OptionData) => {
     setSelectedOptionDetail(option);
     setTradePanelVisible(true);
@@ -127,22 +129,13 @@ const OptionsVisualization: React.FC = () => {
 
       {/* Tab Switching */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div className="flex rounded-xl bg-funoption-bg p-1 shadow-inner">
-          <button
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'call' ? 'bg-funoption-chart-call text-white shadow' : 'text-funoption-text-muted hover:text-white'}`}
-            onClick={() => setActiveTab('call')}
-          >
-            Call Options
-          </button>
-          <button
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'put' ? 'bg-funoption-chart-put text-white shadow' : 'text-funoption-text-muted hover:text-white'}`}
-            onClick={() => setActiveTab('put')}
-          >
-            Put Options
-          </button>
-        </div>
+        <OptionTypeSelector
+          selectedType={activeTab}
+          onChange={setActiveTab}
+          variant="chart"
+        />
 
-        {/* 暗号通貨選択コンポーネント */}
+        {/* Cryptocurrency selector component */}
         <CryptoSelector
           selectedCrypto={selectedCrypto}
           cryptoPrices={cryptoPrices}
@@ -151,35 +144,16 @@ const OptionsVisualization: React.FC = () => {
         />
       </div>
 
-      {/* Date Selection Buttons */}
-      <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2 bg-funoption-bg rounded-options p-2.5">
-        <button
-          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${selectedExpiry === "all" ? "bg-funoption-gold text-white shadow-md" : "bg-funoption-bg-light text-funoption-text-muted hover:bg-funoption-bg-lighter hover:text-white"}`}
-          onClick={() => setSelectedExpiry("all")}
-          disabled={loading}
-        >
-          All
-        </button>
-
-        {/* Use 'expirations' from the provider directly */}
-        {expirations && expirations.length > 0 ? expirations.map((exp: string, index: number) => {
-          // 満期日データのnullチェック
-          if (!exp || exp === 'all') return null; // Skip 'all' if it's part of the list for UI buttons
-
-          // 安全に日付をフォーマット
-          const formattedDate = formatExpiryDate(exp);
-
-          return (
-            <button
-              key={index}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${selectedExpiry === exp ? "bg-funoption-gold text-white shadow-md" : "bg-funoption-bg-light text-funoption-text-muted hover:bg-funoption-bg-lighter hover:text-white"}`}
-              onClick={() => setSelectedExpiry(exp)}
-              disabled={loading}
-            >
-              {formattedDate}
-            </button>
-          );
-        }) : (
+      {/* Date Selection */}
+      <div className="mb-6 overflow-x-auto pb-2 bg-funoption-bg rounded-options p-2.5">
+        {expirations && expirations.length > 0 ? (
+          <ExpiryDateSelector 
+            expirations={expirations.filter(exp => exp !== 'all')} 
+            selectedExpiry={selectedExpiry}
+            onChange={setSelectedExpiry}
+            showAllOption={true}
+          />
+        ) : (
           <span className="px-3 py-1.5 rounded-xl text-xs bg-funoption-bg-light text-funoption-text-muted animate-pulse">
             Loading expiration dates...
           </span>

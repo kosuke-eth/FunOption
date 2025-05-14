@@ -8,17 +8,6 @@ export default {
         bitcoin: "#F7931A",
         positive: "#00BF40",
         negative: "#FF0000",
-        surface: {
-          DEFAULT: "#FFFFFF",
-          container: "#FAFAFA",
-          "container-high": "#F5F5F5",
-          on: "#242424",
-          "on-var": "#999999",
-        },
-        outline: {
-          DEFAULT: "#ADADAD",
-          variant: "#EDEDED",
-        },
         primary: {
           50: "#f7f0ff",
           100: "#e9d9ff",
@@ -33,8 +22,6 @@ export default {
           950: "#23134f",
           DEFAULT: "#4520b5",
         },
-        primaryFrom: "#8E2DE2",
-        primaryTo: "#4A00E0",
         success: "#10B981",
         danger: "#EF4444",
         neutral: "#4B5563",
@@ -43,18 +30,30 @@ export default {
           light: "#18191c",
           DEFAULT: "#121214",
         },
-        // FunOption追加カラー
+        // FunOptionアプリケーション用の統一カラー
         funoption: {
-          // UIの背景色
+          // 背景色
           bg: {
-            DEFAULT: "#1e2227",
-            dark: "#171a1e",
-            light: "#2a2e36",
-            lighter: "#3a3f48",
+            DEFAULT: "#13131A",
+            dark: "#0F0F14",
+            light: "#1e2227",
+            lighter: "#2a2e36",
           },
-          // ゴールドアクセント色（日付セレクタなど）
+          // カード背景
+          card: {
+            DEFAULT: "rgba(26, 26, 35, 0.5)",
+            hover: "rgba(26, 26, 35, 0.8)",
+            active: "rgba(35, 35, 45, 0.9)",
+          },
+          // ボーダー
+          border: {
+            DEFAULT: "rgba(255, 255, 255, 0.1)",
+            light: "rgba(255, 255, 255, 0.15)",
+            dark: "rgba(0, 0, 0, 0.2)",
+          },
+          // アクセントカラー
           gold: {
-            DEFAULT: "#e0b84d",
+            DEFAULT: "#F5A623",
             light: "#f0c85d",
             dark: "#c09b3d",
           },
@@ -64,6 +63,14 @@ export default {
             muted: "#adadad",
             faint: "#777777",
           },
+          // プライマリーグラデーション
+          primary: {
+            from: "#8E2DE2",
+            to: "#4A00E0",
+          },
+          // 成功/エラーカラー
+          success: "#10B981",
+          danger: "#EF4444",
           // チャート表示関連の色
           chart: {
             call: "#10B981", // 緑色 - コールオプション
