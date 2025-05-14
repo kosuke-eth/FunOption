@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import OptionsChart from '../OptionsChart/OptionsChart';
 import OptionTradePanel from '../OptionTradePanel';
-import { OptionData, useOptions } from '../../providers/OptionsDataProvider'; // Consolidated import
+import { OptionData, useOptions } from '../../providers/OptionsDataProvider';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useSnackbar } from '../SnackbarProvider';
-import './OptionsVisualization.css';
 import { ChartStyles } from '../OptionsChart/colorUtils';
 import { bybitClient } from '../../api/bybit';
 import CryptoSelector from '../CryptoSelector/CryptoSelector';
@@ -124,26 +123,25 @@ const OptionsVisualization: React.FC = () => {
   };
 
   return (
-    <div className="options-visualization-container">
+    <div className="min-h-screen bg-[#0D0D0D] bg-[linear-gradient(135deg,#0D0D0D_0%,#121212_100%)] text-white font-grotesk p-4 md:p-6">
 
       {/* Tab Switching */}
-      <div className="flex justify-between items-center">
-        <div className="tabs flex justify-center items-center space-x-1">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="flex rounded-xl bg-funoption-bg p-1 shadow-inner">
           <button
-            className={`tab ${activeTab === 'call' ? 'active' : ''}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'call' ? 'bg-funoption-chart-call text-white shadow' : 'text-funoption-text-muted hover:text-white'}`}
             onClick={() => setActiveTab('call')}
-            style={activeTab === 'call' ? { backgroundColor: ChartStyles.colors.call, color: '#fff' } : {}}
           >
             Call Options
           </button>
           <button
-            className={`tab ${activeTab === 'put' ? 'active' : ''}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'put' ? 'bg-funoption-chart-put text-white shadow' : 'text-funoption-text-muted hover:text-white'}`}
             onClick={() => setActiveTab('put')}
-            style={activeTab === 'put' ? { backgroundColor: ChartStyles.colors.put, color: '#fff' } : {}}
           >
             Put Options
           </button>
         </div>
+
         {/* 暗号通貨選択コンポーネント */}
         <CryptoSelector
           selectedCrypto={selectedCrypto}
@@ -154,9 +152,9 @@ const OptionsVisualization: React.FC = () => {
       </div>
 
       {/* Date Selection Buttons */}
-      <div className="date-selector">
+      <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2 bg-funoption-bg rounded-options p-2.5">
         <button
-          className={`date-button ${selectedExpiry === "all" ? "active" : ""}`}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${selectedExpiry === "all" ? "bg-funoption-gold text-white shadow-md" : "bg-funoption-bg-light text-funoption-text-muted hover:bg-funoption-bg-lighter hover:text-white"}`}
           onClick={() => setSelectedExpiry("all")}
           disabled={loading}
         >
@@ -173,42 +171,57 @@ const OptionsVisualization: React.FC = () => {
 
           return (
             <button
-              key={index} // expの代わりにindexを使用
-              className={`date-button ${selectedExpiry === exp ? "active" : ""}`}
+              key={index}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 ${selectedExpiry === exp ? "bg-funoption-gold text-white shadow-md" : "bg-funoption-bg-light text-funoption-text-muted hover:bg-funoption-bg-lighter hover:text-white"}`}
               onClick={() => setSelectedExpiry(exp)}
               disabled={loading}
             >
               {formattedDate}
             </button>
           );
-        }) : <span className="no-data-message">Loading expiration date data...</span>}
+        }) : (
+          <span className="px-3 py-1.5 rounded-xl text-xs bg-funoption-bg-light text-funoption-text-muted animate-pulse">
+            Loading expiration dates...
+          </span>
+        )}
       </div>
 
       {/* Options Chart */}
-      <div className="chart-container">
+      <div className="relative rounded-2xl overflow-hidden mb-6 animate-fadeIn">
         {filteredOptions && filteredOptions.length > 0 ? (
           <OptionsChart
             data={filteredOptions}
-            currentPrice={cryptoPrices[selectedCrypto] || 0} // 選択された暗号通貨の価格を渡す
-            cryptoSymbol={selectedCrypto} // 追加: 暗号通貨のシンボルも渡す
+            currentPrice={cryptoPrices[selectedCrypto] || 0}
+            cryptoSymbol={selectedCrypto}
             width={800}
             height={500}
             onOptionSelect={handleOptionSelect}
           />
         ) : (
-          <div className="no-data-container">
-            <p>表示するデータがありません。他の満期日を選択してください。</p>
+          <div className="py-12 px-4 bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl text-center shadow-xl">
+            <p className="text-funoption-text-muted">表示するデータがありません。他の満期日を選択してください。</p>
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="loading-indicator">Loading chart...</div>
+        <div className="flex items-center justify-center py-8 text-funoption-text-muted animate-pulse">
+          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading chart data...
+        </div>
       ) : error ? (
-        <div className="error-message">Error loading chart data: {error}</div>
+        <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm">
+          Error loading chart data: {error}
+        </div>
       ) : (
         tradePanelVisible && selectedOptionDetail && (
-          <div className="option-trade-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setTradePanelVisible(false); setSelectedOptionDetail(null); } }}>
+          <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50" 
+            onClick={(e) => { if (e.target === e.currentTarget) { setTradePanelVisible(false); setSelectedOptionDetail(null); } }}
+          >
             <OptionTradePanel
               option={selectedOptionDetail}
               wallet={wallet}

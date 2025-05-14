@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import './OptionsChart.css';
 import { OptionData } from '../../mockData/optionsMock';
 import { getIntensityColor, ChartStyles } from './colorUtils';
 
@@ -307,26 +306,46 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     /* ---------------------------- データポイント ---------------------------- */
     // Poor RRを除外
     const isPoorRR = (d: OptionData) => {
-      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-      const timeValPct = ((Math.max(0, (d.markPrice || 0) - intrinsic) / (d.markPrice || 1)) * 100);
-      const rrRaw = (Math.abs((d.delta || 0) * 100) - Number(timeValPct));
+      // 安全に数値変換
+      const markPrice = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice || 0;
+      const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike || currentPrice;
+      const delta = typeof d.delta === 'string' ? parseFloat(d.delta) : d.delta || 0;
+      
+      // 計算に必要な数値の安全チェック
+      if (isNaN(markPrice) || isNaN(strike)) return true;
+      
+      const safeMarkPrice = Math.max(0.01, markPrice);
+      const safeStrike = strike;
+      const safeDelta = delta;
+      
+      const intrinsic = d.type === 'call' ? 
+        Math.max(0, currentPrice - safeStrike) : 
+        Math.max(0, safeStrike - currentPrice);
+        
+      const timeValPct = ((Math.max(0, safeMarkPrice - intrinsic) / safeMarkPrice) * 100);
+      const rrRaw = (Math.abs(safeDelta * 100) - timeValPct);
+      
       return rrRaw < -10;
     };
 
     // ユーザー向けにポイントを絞り込み: 現在価格±20%以内かつ出来高上位30件
     const filteredData = data
-      .filter((d) => Math.abs(d.strike - currentPrice) / currentPrice < 0.2)
+      .filter((d) => {
+        const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike;
+        const safeStrike = isNaN(strike) ? currentPrice : strike;
+        return Math.abs(safeStrike - currentPrice) / currentPrice < 0.2;
+      })
       .filter((d) => !isPoorRR(d))
       .sort((a, b) => (b.volume || 0) - (a.volume || 0))
       .slice(0, 15);
-
-    // hover state helpers (先に定義して後で使用)
+      
+    // ホバー時のポイント制御
     const handleMouseOverPoint = (event: any, d: OptionData) => {
       if (!containerRef.current) return;
       if (tooltipTimeout) {
         clearTimeout(tooltipTimeout);
       }
-      const hoveredElement = d3.select(event.target);
+      
       chartGroup
         .selectAll<SVGCircleElement, OptionData>('.data-point')
         .transition()
@@ -334,33 +353,45 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('opacity', (p) => (p === d ? 1 : 0.3))
         .attr('stroke', (p) => (p === d ? 'white' : 'none'))
         .attr('stroke-width', (p) => (p === d ? 2 : 0))
-        .attr('r', (p) => (p === d ? volumeScale((p.volume || 0)) * 1.5 : volumeScale(p.volume || 0))); // ホバー点を1.5倍に
+        .attr('r', (p) => {
+          if (p === d) {
+            const vol = typeof p.volume === 'string' ? parseFloat(p.volume) : (p.volume || 0);
+            return volumeScale(isNaN(vol) ? 0 : vol) * 1.5;
+          } else {
+            const vol = typeof p.volume === 'string' ? parseFloat(p.volume) : (p.volume || 0);
+            return volumeScale(isNaN(vol) ? 0 : vol);
+          }
+        });
 
       const [x, y] = d3.pointer(event, containerRef.current);
       tooltipTimeout = window.setTimeout(() => {
         const tooltipSel = d3
           .select(tooltipRef.current)
-          .style('display', 'block')
+          .style('display', 'block') // display:none を display:block に変更
           .style('left', `${x + 10}px`)
           .style('top', `${y - 10}px`);
 
         if (d) {
           tooltipSel.html(makeTooltipHtml(d));
         } else {
-          tooltipSel.html('<div>No data</div>');
+          tooltipSel.html('<div class="text-gray-300">No data</div>');
         }
       }, 250);
     };
-
+    
+    // ホバー解除時の処理
     const handleMouseOutPoint = () => {
       chartGroup
         .selectAll<SVGCircleElement, OptionData>('.data-point')
         .transition()
         .duration(150)
-        .attr('opacity', 1)
-        .attr('stroke', 'none')
-        .attr('stroke-width', 0)
-        .attr('r', (p) => volumeScale(p.volume || 0)); // 元のサイズに戻す
+        .attr('opacity', 0.8)
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2.5)
+        .attr('r', (p) => {
+          const vol = typeof p.volume === 'string' ? parseFloat(p.volume) : (p.volume || 0);
+          return volumeScale(isNaN(vol) ? 0 : vol);
+        });
 
       if (tooltipTimeout) {
         clearTimeout(tooltipTimeout);
@@ -368,7 +399,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       }
       d3.select(tooltipRef.current).style('display', 'none');
     };
-
+    
     // ボリュームスケール（円サイズに反映）
     const maxVolume = d3.max(filteredData, (d) => d.volume || 0) || 1;
     const volumeScale = d3
@@ -377,117 +408,220 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .range([
         ChartStyles.sizes.pointRadius.small + 2,
         ChartStyles.sizes.pointRadius.large + 2,
-      ]);
-
-    chartGroup
-      .selectAll('.data-point')
+      ]); // 元のサイズ設定に戻す
+      
+    // ツールチップ内容生成関数
+    const makeTooltipHtml = (d: OptionData) => {
+      // 安全に数値変換 - Bybit APIが文字列を返す場合に対応
+      const markPrice = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice || 0;
+      const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike || currentPrice;
+      const delta = typeof d.delta === 'string' ? parseFloat(d.delta) : d.delta || 0;
+      const volume = typeof d.volume === 'string' ? parseFloat(d.volume) : d.volume || 0;
+      const openInterest = typeof d.openInterest === 'string' ? parseFloat(d.openInterest) : d.openInterest || 0;
+      const iv = typeof d.iv === 'string' ? parseFloat(d.iv) : d.iv || 0;
+      
+      // 数値計算 - 必ず安全なデフォルト値を設定
+      const safeStrike = isNaN(strike) ? currentPrice : strike;
+      const safeMarkPrice = Math.max(0.01, isNaN(markPrice) ? 0 : markPrice);
+      const safeDelta = isNaN(delta) ? 0 : delta;
+      
+      const intrinsic = d.type === 'call' ? 
+        Math.max(0, currentPrice - safeStrike) : 
+        Math.max(0, safeStrike - currentPrice);
+        
+      const timeValPct = ((Math.max(0, safeMarkPrice - intrinsic) / safeMarkPrice) * 100).toFixed(0);
+      const rrRaw = (Math.abs(safeDelta * 100) - Number(timeValPct));
+      
+      // バッジスタイル
+      const rrBadge = rrRaw > 10 
+        ? `<span class="badge badge-bullish">Good RR</span>` 
+        : rrRaw < -10 
+          ? `<span class="badge badge-bearish">Poor RR</span>` 
+          : `<span class="badge badge-neutral">Neutral</span>`;
+      
+      // 安全に表示するヘルパー関数
+      const formatNum = (val: number | null | undefined, format: (n: number) => string): string => {
+        if (val === null || val === undefined || isNaN(val)) return 'N/A';
+        return format(val);
+      };
+      
+      // 通貨フォーマット関数
+      const formatCurrency = (n: number): string => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'decimal',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4
+        }).format(n);
+      };
+          
+      return `
+        <div class="text-sm font-semibold text-white mb-1.5">${d.type === 'call' ? 'CALL' : 'PUT'} ${strike}</div>
+        <div class="grid gap-1.5">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Price:</span>
+            <span class="text-white">${formatNum(safeMarkPrice, formatCurrency)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Bid/Ask:</span>
+            <span class="text-white">${d.bid ?? 'N/A'} / ${d.ask ?? 'N/A'}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Volume:</span>
+            <span class="text-white">${formatNum(volume, n => d3.format(",.0f")(n))}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Open Interest:</span>
+            <span class="text-white">${formatNum(openInterest, n => d3.format(",.0f")(n))}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">IV:</span>
+            <span class="text-white">${formatNum(iv, n => d3.format('.1%')(n))}</span>
+          </div>
+          <div class="mt-1.5">${rrBadge}</div>
+        </div>    
+      `;
+    };
+    
+    // 円のデータポイント描画
+    const dataPoints = chartGroup
+      .selectAll<SVGCircleElement, OptionData>('.data-point')
       .data(filteredData)
-      .enter()
-      .append('circle')
-      .attr('class', (d) => {
-        const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-        const timeVal = Math.max(0, (d.markPrice || 0) - intrinsic);
-        const totalRisk = timeVal / (d.markPrice || 1);
-        const isRecommend = Math.abs(d.strike - currentPrice) / currentPrice < 0.05 && totalRisk > 0.4 && totalRisk < 0.6;
-        return isRecommend ? 'data-point clickable' : 'data-point';
+      .join('circle')
+      .attr('class', (d) => `data-point cursor-pointer ${d.type === 'call' ? 'call' : 'put'}`)
+      .attr('cx', (d) => {
+        const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : (d.strike || currentPrice);
+        return xScale(isNaN(strike) ? currentPrice : strike) || 0;
       })
-      .attr('cx', (d) => xScale(d.strike))
-      .attr('cy', (d) => yScale(d.markPrice || 0))
-      .attr('r', (d) => volumeScale(d.volume || 0)) // 初期半径
-      .attr('fill', (d) => (d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put))
-      .attr('stroke', '#ffffff')
-      .attr('stroke-width', 2.5)
-      .style('filter', (d) =>
-        d.type === 'call'
-          ? 'drop-shadow(0 0 6px rgba(16,185,129,0.65))'
-          : 'drop-shadow(0 0 6px rgba(239,68,68,0.65))',
-      )
-      .style('animation-delay', (d) => `${(((d.volume ?? 0) / maxVolume) * 2.4).toFixed(2)}s`)
-      .attr('aria-label', (d) =>
-        `${d.type === 'call' ? 'Call' : 'Put'} ${d.strike}K, Δ ${(d.delta || 0).toFixed(2)}, price ${formatCurrency(d.markPrice || 0)}`,
-      )
+      .attr('cy', (d) => {
+        const price = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : (d.markPrice || 0);
+        return yScale(isNaN(price) ? 0 : price) || 0;
+      })
+      .attr('r', (d) => {
+        const vol = typeof d.volume === 'string' ? parseFloat(d.volume) : (d.volume || 0);
+        // 初期半径は小さく設定し、アニメーションで大きくする
+        return volumeScale(isNaN(vol) ? 0 : vol) * 0.7;
+      })
+      .attr('fill', (d) => d.type === 'call' ? ChartStyles.colors.call : ChartStyles.colors.put)
+      .attr('opacity', 0.8)
+      .attr('stroke', (d) => d.type === 'call' ? '#10b981' : '#ef4444')
+      .attr('stroke-width', 1.5)
+      .style('filter', (d) => d.type === 'call' ? 
+        'drop-shadow(0 0 4px rgba(16,185,129,0.5))' : 
+        'drop-shadow(0 0 4px rgba(239,68,68,0.5))')
+      
+    // 各データポイントにアニメーションを適用
+    // 特定の間隔でパルスする効果を作成
+    dataPoints.each(function(this: SVGCircleElement, d: OptionData, i: number) {
+      const point = d3.select(this);
+      const vol = typeof d.volume === 'string' ? parseFloat(d.volume) : (d.volume || 0);
+      const baseRadius = volumeScale(isNaN(vol) ? 0 : vol);
+      const delay = i * 150; // 各ポイントを別々のタイミングで開始
+      
+      function animatePoint() {
+        point
+          .transition()
+          .delay(delay % 2000) // 受け取った遅延を適用
+          .duration(1200)
+          .attr('r', baseRadius * 1.3) // 拡大
+          .attr('opacity', 1)
+          .transition()
+          .duration(1200)
+          .attr('r', baseRadius * 0.8) // 縦小
+          .attr('opacity', 0.7)
+          .on('end', animatePoint); // 無限ループ
+      }
+      
+      // アニメーション開始
+      animatePoint();
+    })
+      .attr('aria-label', (d) => {
+        const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike;
+        const delta = typeof d.delta === 'string' ? parseFloat(d.delta) : d.delta;
+        const markPrice = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice;
+        return `${d.type === 'call' ? 'Call' : 'Put'} ${strike}, Delta ${(delta || 0).toFixed(2)}, price ${formatCurrency(markPrice || 0)}`;
+      })
       .attr('tabindex', 0)
       .on('mouseover', handleMouseOverPoint)
       .on('mouseout', handleMouseOutPoint)
       .on('click', (event, d) => {
+        event.stopPropagation();
         setSelectedOption(d);
-        onOptionSelect?.(d);
+        if (onOptionSelect) {
+          onOptionSelect(d);
+        }
       });
 
-    const makeTooltipHtml = (d: OptionData) => {
-      const intrinsic = d.type === 'call' ? Math.max(0, currentPrice - d.strike) : Math.max(0, d.strike - currentPrice);
-      const timeValPct = ((Math.max(0, (d.markPrice || 0) - intrinsic) / (d.markPrice || 1)) * 100).toFixed(0);
-      // risk-reward: delta×100 vs timeValPct 差を簡易指標
-      const rrRaw = (Math.abs((d.delta || 0) * 100) - Number(timeValPct));
-      const rrBadge = rrRaw > 10 ? `<span class="badge badge-bullish">Good RR</span>` : rrRaw < -10 ? `<span class="badge badge-bearish">Poor RR</span>` : `<span class="badge badge-neutral">Neutral</span>`;
-      return `
-        <div class="tooltip-row"><strong>Bid/Ask:</strong> ${d.bid ?? 'N/A'} / ${d.ask ?? 'N/A'}</div>
-        <div class="tooltip-row"><strong>Volume:</strong> ${d3.format(",.0f")(d.volume ?? 0)}</div>
-        <div class="tooltip-row"><strong>OI:</strong> ${d3.format(",.0f")(d.openInterest ?? 0)}</div>
-        <div class="tooltip-row"><strong>IV:</strong> ${d.iv ? d3.format('.1%')(d.iv) : 'N/A'}</div>
-        <div class="tooltip-rr">${rrBadge}</div>`;
-    };
-
-    // すべてのポイントを最前面に
-    chartGroup.selectAll('.data-point').raise();
-
-    /* --------- デルタ帯を示すガイドライン (0.25 / 0.50 / 0.75) --------- */
     const deltaThresholds = [0.25, 0.5, 0.75];
     const callOptions = data.filter((d) => d.type === 'call');
     if (callOptions.length) {
-      deltaThresholds.forEach((thr) => {
-        const closestCall = callOptions.reduce((prev, curr) =>
-          Math.abs((curr.delta || 999) - thr) < Math.abs((prev.delta || 999) - thr) ? curr : prev,
-        );
+      deltaThresholds.forEach((threshold) => {
+        const closestCall = callOptions.reduce((prev, curr) => {
+          const prevDelta = typeof prev.delta === 'string' ? parseFloat(prev.delta) : (prev.delta || 999);
+          const currDelta = typeof curr.delta === 'string' ? parseFloat(curr.delta) : (curr.delta || 999);
+          return Math.abs(currDelta - threshold) < Math.abs(prevDelta - threshold) ? curr : prev;
+        });
+        
         if (closestCall) {
-          const xPos = xScale(closestCall.strike);
+          const strike = typeof closestCall.strike === 'string' ? parseFloat(closestCall.strike) : closestCall.strike;
+          const xPos = xScale(isNaN(strike) ? currentPrice : strike);
+          
           chartGroup
             .append('line')
             .attr('x1', xPos)
             .attr('x2', xPos)
             .attr('y1', 0)
             .attr('y2', innerHeight)
-            .attr('stroke', '#444')
+            .attr('stroke', 'gray')
             .attr('stroke-dasharray', '2 2');
 
           chartGroup
             .append('text')
             .attr('x', xPos + 4)
             .attr('y', 12)
-            .attr('fill', '#666')
+            .attr('fill', 'gray')
             .attr('font-size', 10)
-            .text(`Δ ${thr}`);
+            .text(`Delta ${threshold}`);
         }
       });
     }
 
-    /* ---------------------------- データライン ---------------------------- */
-    const sortedData = [...data].sort((a, b) => a.strike - b.strike);
+    const sortedData = [...data].sort((a, b) => {
+      const aStrike = typeof a.strike === 'string' ? parseFloat(a.strike) : a.strike;
+      const bStrike = typeof b.strike === 'string' ? parseFloat(b.strike) : b.strike;
+      return (isNaN(aStrike) ? 0 : aStrike) - (isNaN(bStrike) ? 0 : bStrike);
+    });
+    
     const lineGenerator = d3
       .line<OptionData>()
-      .x((d) => xScale(d.strike))
-      .y((d) => yScale(d.markPrice || 0))
-      .defined(d => typeof d.strike === 'number' && isFinite(d.strike) && typeof d.markPrice === 'number' && isFinite(d.markPrice)) // NaN/undefinedをスキップ
+      .x((d) => {
+        const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : (d.strike || 0);
+        return xScale(isNaN(strike) ? 0 : strike);
+      })
+      .y((d) => {
+        const price = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : (d.markPrice || 0);
+        return yScale(isNaN(price) ? 0 : price);
+      })
+      .defined(d => {
+        const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike;
+        const price = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice;
+        return typeof strike === 'number' && isFinite(strike) && 
+               typeof price === 'number' && isFinite(price);
+      })
       .curve(d3.curveMonotoneX);
 
-    // データが存在する場合のみラインを描画
-    if (validData.length > 0 && strikeDomain[0] < strikeDomain[1] && markPriceDomain[1] > 0) {
+    if (sortedData.length > 0) {
       chartGroup
         .append('path')
-        .datum(validData.sort((a, b) => a.strike - b.strike)) // Ensure data is sorted for line
+        .datum(sortedData)
         .attr('class', 'price-line')
         .attr('fill', 'none')
-        .attr('stroke', ChartStyles.colors.timeValue)
-        .attr('stroke-width', ChartStyles.sizes.lineWidth.normal)
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 2)
         .attr('stroke-opacity', 0.8)
         .attr('d', lineGenerator);
-    } else {
-      console.warn('[Chart] Skipping price line drawing: No valid data or invalid domain.');
     }
 
-    /* ---------------------------- 現在価格線 ---------------------------- */
-    // 現在価格が有効で、strikeドメインが有効な場合のみ線とテキストを描画
-    if (typeof currentPrice === 'number' && isFinite(currentPrice) && strikeDomain[0] < strikeDomain[1]) {
+    if (typeof currentPrice === 'number' && isFinite(currentPrice)) {
       const currentPriceX = xScale(currentPrice);
       chartGroup
         .append('line')
@@ -495,35 +629,34 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('x2', currentPriceX)
         .attr('y1', 0)
         .attr('y2', innerHeight)
-        .attr('stroke', ChartStyles.colors.currentPrice)
+        .attr('stroke', 'gray')
         .attr('stroke-dasharray', '4 4');
 
-      // ラベル（縦線の上部）
       chartGroup
         .append('text')
         .attr('x', currentPriceX + 6)
-        .attr('y', -6) // Position above the top margin line
-        .attr('fill', ChartStyles.colors.currentPrice)
-        .attr('font-size', ChartStyles.sizes.fontSize.small)
-        .text(`${cryptoSymbol}: ${formatCurrency(currentPrice)}`); // 選択された暗号通貨シンボルを表示
-    } else {
-      console.warn('[Chart] Skipping current price line/text: Invalid currentPrice or strike domain.');
+        .attr('y', -6)
+        .attr('fill', 'gray')
+        .attr('font-size', 12)
+        .text(`${cryptoSymbol}: ${formatCurrency(currentPrice)}`);
     }
-
-    /* ---------------------------- ヒートマップ背景 ---------------------------- */
   };
 
-  /* ---------------------------- Effect ---------------------------- */
   useEffect(() => {
-    console.log('[Chart] Received data:', data); // Log received data
+    console.log('[Chart] Received data:', data);
     if (data.length) drawChart();
   }, [data, currentPrice, containerWidth]);
 
-  /* ---------------------------- JSX ---------------------------- */
   return (
-    <div className="options-chart-container" ref={containerRef}>
-      <svg ref={svgRef} width={width} height={height} />
-      <div className="tooltip" ref={tooltipRef} />
+    <div
+      ref={containerRef}
+      className="relative w-full bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl shadow-xl p-4 font-grotesk animate-fadeIn overflow-hidden"
+    >
+      <svg ref={svgRef} className="w-full h-96 md:h-[600px] block overflow-visible" />
+      <div
+        ref={tooltipRef}
+        className="absolute z-50 hidden bg-funoption-bg/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-funoption-gold/30 text-xs pointer-events-none max-w-[220px] leading-relaxed"
+      />
     </div>
   );
 };
