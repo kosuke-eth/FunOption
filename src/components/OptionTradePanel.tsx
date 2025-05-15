@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OptionData } from '../providers/OptionsDataProvider';
 import { ChartStyles } from './OptionsChart/colorUtils';
-import './OptionTradePanel.css';
 import type { OptionOrderParams, CreateOrderResultData } from '../api/bybit';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 import { SnackbarType } from './SnackbarProvider'; // Adjusted path
@@ -188,87 +187,153 @@ const OptionTradePanel: React.FC<OptionTradePanelProps> = ({ option, wallet, sho
   if (!option) return null;
 
   return (
-    <div className={`option-trade-panel`} aria-hidden={!option}>
-      {/* Header */}
-      <div className="panel-header">
-        <h2>{side === 'buy' ? 'Buy' : 'Sell'} {option.type.toUpperCase()} {formatNumber(option.strike, 0)}</h2>
-        <button className="close-btn" onClick={onClose}>&times;</button>
-      </div>
-
-      {/* Side Switch */}
-      <div className="toggle-group">
-        <button
-          className={`buy-btn ${side === 'buy' ? 'active' : ''}`}
-          style={{ background: ChartStyles.colors.call, opacity: side === 'buy' ? 1 : 0.7 }}
-          onClick={() => setSide('buy')}
-        >
-          Buy
-        </button>
-        <button
-          className={`sell-btn ${side === 'sell' ? 'active' : ''}`}
-          style={{ background: ChartStyles.colors.put, opacity: side === 'sell' ? 1 : 0.7 }}
-          onClick={() => setSide('sell')}
-        >
-          Sell
-        </button>
-      </div>
-
-      {/* Price and Size */}
-      <h3 className="section-header">Price / Size</h3>
-
-      <div className="input-group">
-        <label>Price (USDC)</label>
-        <input
-          type="number"
-          min={0}
-          step={5}
-          value={price.toString()} // Display as integer string
-          onChange={(e) => {
-            const inputValue = Number(e.target.value);
-            setPrice(Math.round(inputValue / 5) * 5); // Round to nearest 5 and update state
-          }}
-        />
-        <button onClick={() => setPrice((p) => Math.max(0, p - 5))}>-</button>
-        <button onClick={() => setPrice((p) => p + 5)}>+</button>
-      </div>
-
-      <div className="input-group">
-        <label>Size (BTC)</label>
-        <input
-          type="number"
-          min={0.01}
-          step={0.01}
-          value={lotSize}
-          onChange={(e) => setLotSize(Number(e.target.value))}
-        />
-        <button onClick={() => setLotSize((s) => Math.max(0.01, parseFloat((s - 0.01).toFixed(2))))}>-</button>
-        <button onClick={() => setLotSize((s) => parseFloat((s + 0.01).toFixed(2)))}>+</button>
-      </div>
-
-      {/* Price Information */}
-      <h3 className="section-header">Price Information</h3>
-      <div className="price-info">
-        <div><span>Mark Price</span><span>{formatNumber(option.markPrice, 2)}</span></div>
-        <div><span>Bid</span><span>{formatNumber(option.bid, 2)}</span></div>
-        <div><span>Ask</span><span>{formatNumber(option.ask, 2)}</span></div>
-      </div>
-
-      {/* Greeks */}
-      <h3 className="section-header">Greeks</h3>
-      <div className="greeks-info">
-        <div><span>Gamma</span><span>{formatNumber(option.gamma !== undefined ? option.gamma * sideMultiplier : undefined, 4)}</span></div>
-        <div><span>Theta</span><span>{formatNumber(option.theta !== undefined ? option.theta * sideMultiplier : undefined, 4)}</span></div>
-      </div>
-
-      {/* Confirm */}
-      <button
-        className="confirm-btn"
-        style={{ background: side === 'buy' ? ChartStyles.colors.call : ChartStyles.colors.put }}
-        disabled={isSubmitting || lotSize < 0.01} // Ensure lotSize is valid
-        onClick={handleConfirm}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn" onClick={onClose}>
+      <div 
+        className="w-[480px] max-w-[90%] bg-funoption-card-DEFAULT shadow-xl rounded-2xl p-6 text-funoption-text-DEFAULT overflow-hidden" 
+        onClick={(e) => e.stopPropagation()}
+        aria-hidden={!option}
       >
-        {isSubmitting ? 'Placing…' : 'Confirm'}
-      </button>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 border-b border-funoption-border pb-4">
+          <h2 className="text-2xl font-bold">
+            {side === 'buy' ? 'Buy' : 'Sell'} {option.type.toUpperCase()} {formatNumber(option.strike, 0)}
+          </h2>
+          <button 
+            className="text-funoption-text-muted hover:text-funoption-text-DEFAULT transition-colors text-2xl focus:outline-none" 
+            onClick={onClose}
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Side Switch */}
+        <div className="flex gap-3 mb-6">
+          <button
+            className={`flex-1 py-2.5 px-4 rounded-xl text-white font-medium transition-all ${side === 'buy' ? 'shadow-lg' : 'opacity-70'}`}
+            style={{ background: side === 'buy' ? '#10B981' : '#2c2d3a' }}
+            onClick={() => setSide('buy')}
+          >
+            Buy
+          </button>
+          <button
+            className={`flex-1 py-2.5 px-4 rounded-xl text-white font-medium transition-all ${side === 'sell' ? 'shadow-lg' : 'opacity-70'}`}
+            style={{ background: side === 'sell' ? '#EF4444' : '#2c2d3a' }}
+            onClick={() => setSide('sell')}
+          >
+            Sell
+          </button>
+        </div>
+
+        {/* Price and Size */}
+        <h3 className="text-lg font-semibold text-funoption-text-DEFAULT mb-3">Price / Size</h3>
+
+        <div className="mb-4">
+          <label className="block text-funoption-text-muted mb-1.5 text-sm">Price (USDC)</label>
+          <div className="flex rounded-xl overflow-hidden border border-funoption-border">
+            <input
+              type="number"
+              min={0}
+              step={5}
+              value={price.toString()}
+              onChange={(e) => {
+                const inputValue = Number(e.target.value);
+                setPrice(Math.round(inputValue / 5) * 5);
+              }}
+              className="flex-1 bg-funoption-card-hover py-2 px-3 outline-none"
+            />
+            <div className="flex divide-x divide-funoption-border border-l border-funoption-border">
+              <button 
+                onClick={() => setPrice((p) => Math.max(0, p - 5))}
+                className="px-3 bg-funoption-card-hover hover:bg-funoption-card-active transition-colors"
+              >
+                -
+              </button>
+              <button 
+                onClick={() => setPrice((p) => p + 5)}
+                className="px-3 bg-funoption-card-hover hover:bg-funoption-card-active transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-funoption-text-muted mb-1.5 text-sm">Size (BTC)</label>
+          <div className="flex rounded-xl overflow-hidden border border-funoption-border">
+            <input
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={lotSize}
+              onChange={(e) => setLotSize(Number(e.target.value))}
+              className="flex-1 bg-funoption-card-hover py-2 px-3 outline-none"
+            />
+            <div className="flex divide-x divide-funoption-border border-l border-funoption-border">
+              <button 
+                onClick={() => setLotSize((s) => Math.max(0.01, parseFloat((s - 0.01).toFixed(2))))}
+                className="px-3 bg-funoption-card-hover hover:bg-funoption-card-active transition-colors"
+              >
+                -
+              </button>
+              <button 
+                onClick={() => setLotSize((s) => parseFloat((s + 0.01).toFixed(2)))}
+                className="px-3 bg-funoption-card-hover hover:bg-funoption-card-active transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Price Information */}
+        <h3 className="text-lg font-semibold text-funoption-text-DEFAULT mb-3">Price Information</h3>
+        <div className="grid grid-cols-3 gap-2 mb-6 bg-funoption-card-hover rounded-xl p-3">
+          <div className="flex flex-col">
+            <span className="text-funoption-text-muted text-sm">Mark Price</span>
+            <span className="text-funoption-text-DEFAULT font-medium">{formatNumber(option.markPrice, 2)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-funoption-text-muted text-sm">Bid</span>
+            <span className="text-funoption-text-DEFAULT font-medium">{formatNumber(option.bid, 2)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-funoption-text-muted text-sm">Ask</span>
+            <span className="text-funoption-text-DEFAULT font-medium">{formatNumber(option.ask, 2)}</span>
+          </div>
+        </div>
+
+        {/* Greeks */}
+        <h3 className="text-lg font-semibold text-funoption-text-DEFAULT mb-3">Greeks</h3>
+        <div className="grid grid-cols-2 gap-3 mb-8 bg-funoption-card-hover rounded-xl p-3">
+          <div className="flex flex-col">
+            <span className="text-funoption-text-muted text-sm">Gamma</span>
+            <span className="text-funoption-text-DEFAULT font-medium">{formatNumber(option.gamma !== undefined ? option.gamma * sideMultiplier : undefined, 4)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-funoption-text-muted text-sm">Theta</span>
+            <span className="text-funoption-text-DEFAULT font-medium">{formatNumber(option.theta !== undefined ? option.theta * sideMultiplier : undefined, 4)}</span>
+          </div>
+        </div>
+
+        {/* Confirm */}
+        <button
+          className={`w-full py-3 px-4 rounded-xl text-white font-medium transition-all ${isSubmitting ? 'opacity-70' : 'hover:opacity-90'}`}
+          style={{ background: side === 'buy' ? '#10B981' : '#EF4444' }}
+          disabled={isSubmitting || lotSize < 0.01}
+          onClick={handleConfirm}
+        >
+          {isSubmitting ? (
+            <div className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Placing Order...</span>
+            </div>
+          ) : 'Confirm'}
+        </button>
+      </div>
     </div>
   );
 };
