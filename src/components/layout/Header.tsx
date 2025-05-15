@@ -17,8 +17,8 @@ export default function Header() {
   const [isRequestingUsdc, setIsRequestingUsdc] = useState(false);
 
   return (
-    <header className="bg-dark shadow-sm">
-      <nav className="max-w-6xl mx-auto">
+    <header className="w-full bg-funoption-bg shadow-sm">
+      <nav className="px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
             <Link
