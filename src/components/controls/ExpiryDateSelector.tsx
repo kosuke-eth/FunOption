@@ -16,7 +16,7 @@ const ExpiryDateSelector: React.FC<ExpiryDateSelectorProps> = ({
   showAllOption = true,
 }) => {
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`}>
+    <div className={`flex flex-nowrap gap-2 overflow-x-auto ${className}`}>
       {showAllOption && (
         <button
           onClick={() => onChange('all')}

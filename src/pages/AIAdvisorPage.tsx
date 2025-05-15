@@ -32,7 +32,7 @@ const AIAdvisorPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
+    <div className="flex flex-col h-screen ">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         {/* Left Column: AI Recommended Options */}

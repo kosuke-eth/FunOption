@@ -12,11 +12,7 @@ interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ selectedCrypto = 'BTC' }) => {
   // Initialize message based on selected crypto
-  const initialMessage = {
-    BTC: 'Hello! Looking for advice on Bitcoin (BTC) options trading? Ask me about pricing, strategies, risk management, or any other questions you might have.',
-    ETH: 'Interested in Ethereum (ETH) options trading? What would you like to know about ETH options markets or strategies?',
-    SOL: 'Need help with Solana (SOL) options trading? Feel free to ask about liquidity, strategies, or risk management approaches.'
-  }[selectedCrypto] || 'Hello! Need advice on options trading? What kind of trades are you interested in?';
+  const initialMessage = 'Hello! Need advice on options trading? What kind of trades are you interested in?';
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -37,12 +33,8 @@ const AIChat: React.FC<AIChatProps> = ({ selectedCrypto = 'BTC' }) => {
 
   // Reset conversation when selected crypto changes
   useEffect(() => {
-    const newInitialMessage = {
-      BTC: 'Hello! Looking for advice on Bitcoin (BTC) options trading? Ask me about pricing, strategies, risk management, or any other questions you might have.',
-      ETH: 'Interested in Ethereum (ETH) options trading? What would you like to know about ETH options markets or strategies?',
-      SOL: 'Need help with Solana (SOL) options trading? Feel free to ask about liquidity, strategies, or risk management approaches.'
-    }[selectedCrypto] || 'Hello! Need advice on options trading? What kind of trades are you interested in?';
-    
+    const newInitialMessage = 'Hello! Need advice on options trading? What kind of trades are you interested in?"';
+
     // Reset conversation with new initial message
     setConversationId(undefined);
     setMessages([
@@ -181,10 +173,7 @@ const AIChat: React.FC<AIChatProps> = ({ selectedCrypto = 'BTC' }) => {
       {/* Chat header */}
       <div className={`px-6 py-4 bg-gradient-to-r ${accentColor} text-white`}>
         <h2 className="text-xl font-bold flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 001.5 2.25m0 0v5.8a2.25 2.25 0 01-1.5 2.25m0 0a4.5 4.5 0 01-4.5 0m3-8.25v-5.8a2.25 2.25 0 00-1.5-2.25m0 0a4.5 4.5 0 00-4.5 0" />
-          </svg>
-          {getCryptoContext()} Trading Assistant
+          Trading Assistant
         </h2>
       </div>
 
@@ -202,11 +191,11 @@ const AIChat: React.FC<AIChatProps> = ({ selectedCrypto = 'BTC' }) => {
               >
                 {message.role === 'assistant' ? 'AI' : 'You'}
               </div>
-              
+
               {/* Message content */}
               <div className={`p-3 rounded-2xl 
-                ${message.role === 'user' 
-                  ? 'bg-funoption-primary-from/20 text-white' 
+                ${message.role === 'user'
+                  ? 'bg-funoption-primary-from/20 text-white'
                   : 'bg-funoption-card-bg-hover text-white'}`}
               >
                 <div className="text-sm whitespace-pre-wrap break-words">
@@ -235,20 +224,20 @@ const AIChat: React.FC<AIChatProps> = ({ selectedCrypto = 'BTC' }) => {
           placeholder={`Ask about ${getCryptoContext()} options trading...`}
           rows={2}
           disabled={isLoading}
-          className="flex-grow rounded-xl px-4 py-3 bg-funoption-card-bg text-white border border-funoption-border focus:outline-none focus:ring-2 focus:ring-funoption-primary-from/50 resize-none"
+          className="flex-grow rounded-xl px-4 py-3 bg-funoption-bg text-gray-200 border border-funoption-border focus:outline-none focus:ring-2 focus:ring-funoption-primary-from/50 resize-none"
         />
         <div className="flex flex-col gap-2">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={input.trim() === '' || isLoading}
             className={`px-4 py-2 rounded-xl bg-gradient-to-r ${accentColor} text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             Send
           </button>
           {isLoading && (
-            <button 
-              type="button" 
-              onClick={handleStopStreaming} 
+            <button
+              type="button"
+              onClick={handleStopStreaming}
               className="px-4 py-2 rounded-xl bg-funoption-danger/20 hover:bg-funoption-danger/30 text-funoption-danger font-semibold transition-colors"
             >
               Stop

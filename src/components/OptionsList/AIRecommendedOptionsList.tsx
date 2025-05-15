@@ -13,19 +13,19 @@ import ExpiryDateSelector from '../controls/ExpiryDateSelector';
  */
 const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
   // デルタが無効な場合はリスク/リワード計算不可
-  const delta = typeof option.delta === 'string' 
-    ? parseFloat(option.delta) 
-    : typeof option.delta === 'number' 
-      ? option.delta 
+  const delta = typeof option.delta === 'string'
+    ? parseFloat(option.delta)
+    : typeof option.delta === 'number'
+      ? option.delta
       : null;
-  
+
   if (delta === null) return true;
 
   // マークプライスの安全な変換
-  const markPriceNum = typeof option.markPrice === 'string' 
-    ? parseFloat(option.markPrice) 
-    : typeof option.markPrice === 'number' 
-      ? option.markPrice 
+  const markPriceNum = typeof option.markPrice === 'string'
+    ? parseFloat(option.markPrice)
+    : typeof option.markPrice === 'number'
+      ? option.markPrice
       : NaN;
 
   if (isNaN(markPriceNum) || markPriceNum <= 0) return true;
@@ -43,14 +43,14 @@ const isPoorRR = (option: OptionData, currentPrice: number): boolean => {
   const intrinsic = option.type === 'call'
     ? Math.max(0, currentPrice - strike)
     : Math.max(0, strike - currentPrice);
-    
+
   // 時間的価値の計算
   const timeValue = Math.max(0, markPriceNum - intrinsic);
   const timeValPct = (timeValue / markPriceNum) * 100;
-  
+
   // リスク/リワード比の計算
   const rrRaw = (Math.abs(delta * 100) - timeValPct);
-  
+
   // -10未満はリスク/リワード比が悪いと判断
   return rrRaw < -10;
 };
@@ -155,25 +155,27 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
   return (
     <div className="w-full animate-fadeIn">
       {/* フィルターと選択コントロール */}
-      <div className="mb-8 space-y-5">
-        {/* Option type (Call/Put) selector */}
-        <OptionTypeSelector 
-          selectedType={selectedOptionType} 
-          onChange={setSelectedOptionType} 
-        />
-
-        {/* 暗号資産セレクター */}
-        <div className="w-full bg-funoption-card-bg rounded-xl p-3 backdrop-blur-sm">
-          <CryptoSelector
-            selectedCrypto={selectedCrypto}
-            cryptoPrices={cryptoPrices}
-            onChange={setSelectedCrypto}
-            loading={cryptoDataLoading}
+      <div className="mb-8 space-y-5 w-full">
+        <div className="flex justify-between items-center w-full">
+          {/* Option type (Call/Put) selector */}
+          <OptionTypeSelector
+            className="w-full"
+            selectedType={selectedOptionType}
+            onChange={setSelectedOptionType}
           />
-        </div>
 
+          {/* 暗号資産セレクター */}
+          <div className="w-full bg-funoption-card-bg rounded-xl p-3 backdrop-blur-sm flex justify-center">
+            <CryptoSelector
+              selectedCrypto={selectedCrypto}
+              cryptoPrices={cryptoPrices}
+              onChange={setSelectedCrypto}
+              loading={cryptoDataLoading}
+            />
+          </div>
+        </div>
         {/* Expiry date selector */}
-        <ExpiryDateSelector 
+        <ExpiryDateSelector
           expirations={expirations}
           selectedExpiry={selectedExpiry}
           onChange={setSelectedExpiry}

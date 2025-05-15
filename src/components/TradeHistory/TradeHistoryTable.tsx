@@ -79,9 +79,8 @@ const TradeHistoryTable: React.FC<TradeHistoryTableProps> = ({
                   <td className="px-4 py-3 text-sm text-funoption-text-DEFAULT">{trade.market}</td>
                   <td className="px-4 py-3 text-sm text-funoption-text-DEFAULT">{trade.product}</td>
                   <td className="px-4 py-3 text-sm text-funoption-text-DEFAULT">{trade.orderType}</td>
-                  <td className={`px-4 py-3 text-sm font-medium ${
-                    trade.direction === 'Buy/Long' ? 'text-funoption-success' : 'text-funoption-danger'
-                  }`}>
+                  <td className={`px-4 py-3 text-sm font-medium ${trade.direction === 'Buy/Long' ? 'text-funoption-success' : 'text-funoption-danger'
+                    }`}>
                     {trade.direction}
                   </td>
                   <td className="px-4 py-3 text-sm text-funoption-text-DEFAULT">{trade.orderPrice}</td>
