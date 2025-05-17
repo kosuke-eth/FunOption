@@ -8,7 +8,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useSnackbar } from '../components/SnackbarProvider';
 
 const AIAdvisorPage: React.FC = () => {
-  const [isChatOpen, setIsChatOpen] = useState(false); // Chat is hidden by default
+  const [isChatOpen, setIsChatOpen] = useState(false); // Chat is only hidden by default on mobile
   const wallet = useWallet();
   const { showSnackbar } = useSnackbar();
 
@@ -37,7 +37,7 @@ const AIAdvisorPage: React.FC = () => {
       <Header />
       <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
         {/* Left Column: AI Recommended Options */}
-        <div className={`overflow-y-auto ${isChatOpen ? 'w-full sm:w-2/3' : 'w-full'}`}>
+        <div className={`overflow-y-auto ${isChatOpen ? 'w-full sm:w-2/3' : 'w-full sm:w-2/3'}`}>
           <div className="p-6 space-y-6">
             <div>
               <h1 className="text-3xl font-bold mb-1 text-white">AI Recommended Options</h1>
@@ -49,8 +49,8 @@ const AIAdvisorPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: AI Chat - Conditionally rendered */}
-        {isChatOpen && (
+        {/* Right Column: AI Chat - Always rendered on desktop, conditionally on mobile */}
+        {(isChatOpen || window.innerWidth >= 640) && (
 
         <div className="w-full sm:w-1/3 sm:border-l border-gray-700 flex flex-col">
           <div className="p-6 space-y-4 flex flex-col flex-grow">
@@ -66,9 +66,10 @@ const AIAdvisorPage: React.FC = () => {
         )}
       </div>
 
+      {/* Show toggle button only on mobile devices */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed bottom-6 right-6 z-40 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 flex items-center focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-opacity-50"
+        className="sm:hidden fixed bottom-6 right-6 z-40 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 flex items-center focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-opacity-50"
         aria-label={isChatOpen ? 'Hide chat panel' : 'Show chat panel'}
         type="button"
       >
