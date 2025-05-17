@@ -156,7 +156,7 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
     <div className="w-full animate-fadeIn">
       {/* フィルターと選択コントロール */}
       <div className="mb-8 space-y-5 w-full">
-        <div className="flex justify-between items-center w-full">
+        <div className="flex flex-col md:flex-row md:justify-between justify-normal items-center md:w-full">
           {/* Option type (Call/Put) selector */}
           <OptionTypeSelector
             className="w-full"
@@ -165,7 +165,7 @@ const AIRecommendedOptionsList: React.FC<AIRecommendedOptionsListProps> = ({
           />
 
           {/* 暗号資産セレクター */}
-          <div className="w-full bg-funoption-card-bg rounded-xl p-3 backdrop-blur-sm flex justify-center">
+          <div className="w-full bg-funoption-card-bg rounded-xl py-3 backdrop-blur-sm flex justify-start md:justify-end md:w-full">
             <CryptoSelector
               selectedCrypto={selectedCrypto}
               cryptoPrices={cryptoPrices}

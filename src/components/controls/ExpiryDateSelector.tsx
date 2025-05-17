@@ -16,11 +16,11 @@ const ExpiryDateSelector: React.FC<ExpiryDateSelectorProps> = ({
   showAllOption = true,
 }) => {
   return (
-    <div className={`flex flex-nowrap gap-2 overflow-x-auto ${className}`}>
+    <div className={`flex flex-nowrap gap-1.5 sm:gap-2 pb-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent ${className}`}>
       {showAllOption && (
         <button
           onClick={() => onChange('all')}
-          className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200
+          className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl whitespace-nowrap flex-shrink-0 transition-all duration-200
             ${selectedExpiry === 'all'
               ? 'bg-gradient-to-r from-funoption-primary-from to-funoption-primary-to text-white shadow-md'
               : 'bg-funoption-card-bg text-gray-300 hover:bg-funoption-card-bg-hover'}`}
@@ -33,7 +33,7 @@ const ExpiryDateSelector: React.FC<ExpiryDateSelectorProps> = ({
         <button
           key={exp}
           onClick={() => onChange(exp)}
-          className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200
+          className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl whitespace-nowrap flex-shrink-0 transition-all duration-200
             ${selectedExpiry === exp
               ? 'bg-gradient-to-r from-funoption-primary-from to-funoption-primary-to text-white shadow-md'
               : 'bg-funoption-card-bg text-gray-300 hover:bg-funoption-card-bg-hover'}`}

@@ -8,6 +8,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useSnackbar } from '../components/SnackbarProvider';
 
 const AIAdvisorPage: React.FC = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false); // Chat is hidden by default
   const wallet = useWallet();
   const { showSnackbar } = useSnackbar();
 
@@ -34,29 +35,46 @@ const AIAdvisorPage: React.FC = () => {
   return (
     <div className="flex flex-col h-screen ">
       <Header />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
         {/* Left Column: AI Recommended Options */}
-        <div className="w-2/3 p-6 overflow-y-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-1 text-white">AI Recommended Options</h1>
-            <p className="text-md text-gray-400">Curated options tailored to your trading style, powered by AI.</p>
-          </div>
+        <div className={`overflow-y-auto ${isChatOpen ? 'w-full sm:w-2/3' : 'w-full'}`}>
+          <div className="p-6 space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-1 text-white">AI Recommended Options</h1>
+              <p className="text-md text-gray-400">Curated options tailored to your trading style, powered by AI.</p>
+            </div>
           <AIRecommendedOptionsList
             onPurchaseClick={handleOpenTradePanel}
           />
+          </div>
         </div>
 
-        {/* Right Column: AI Chat */}
-        <div className="w-1/3 border-l border-gray-700 flex flex-col p-6 space-y-4">
+        {/* Right Column: AI Chat - Conditionally rendered */}
+        {isChatOpen && (
+
+        <div className="w-full sm:w-1/3 sm:border-l border-gray-700 flex flex-col">
+          <div className="p-6 space-y-4 flex flex-col flex-grow">
           <div>
             <h2 className="text-xl font-semibold text-white">AI Advisor Chat</h2>
             <p className="text-sm text-gray-400">Get personalized options trading advice</p>
           </div>
-          <div className="flex-grow h-0">
+          <div className="flex-grow">
             <AIChat />
           </div>
+          </div>
         </div>
+        )}
       </div>
+
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed bottom-6 right-6 z-40 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-3 rounded-full shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 flex items-center focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-opacity-50"
+        aria-label={isChatOpen ? 'Hide chat panel' : 'Show chat panel'}
+        type="button"
+      >
+        {/* You can add an icon here if desired */}
+        <span>{isChatOpen ? 'Hide Chat' : 'Show Chat'}</span>
+      </button>
 
       {/* Trade Panel Modal */}
       {isTradePanelOpen && selectedOptionForTrade && (

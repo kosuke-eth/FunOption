@@ -67,13 +67,13 @@ const OptionTypeSelector: React.FC<OptionTypeSelectorProps> = ({
     <div className={`${getContainerStyle()} ${className}`}>
       <button
         onClick={() => onChange('call')}
-        className={`px-4 py-2.5 text-sm font-medium ${variant === 'chart' ? 'rounded-lg' : 'rounded-xl'} transition-all duration-200 ${getCallButtonStyle()}`}
+        className={`px-2 sm:px-4 py-2.5 text-sm font-medium ${variant === 'chart' ? 'rounded-lg' : 'rounded-xl'} transition-all duration-200 ${getCallButtonStyle()}`}
       >
         Call Options
       </button>
       <button
         onClick={() => onChange('put')}
-        className={`px-4 py-2.5 text-sm font-medium ${variant === 'chart' ? 'rounded-lg' : 'rounded-xl'} transition-all duration-200 ${getPutButtonStyle()}`}
+        className={`px-2 sm:px-4 py-2.5 text-sm font-medium ${variant === 'chart' ? 'rounded-lg' : 'rounded-xl'} transition-all duration-200 ${getPutButtonStyle()}`}
       >
         Put Options
       </button>

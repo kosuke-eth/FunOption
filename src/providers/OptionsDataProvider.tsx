@@ -92,6 +92,41 @@ interface OptionsContextProps {
 
 const OptionsContext = createContext<OptionsContextProps | undefined>(undefined);
 
+// --- Client-side Cache Constants & Helpers ---
+const CACHE_KEY = 'funoption_options_cache_v1';
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5分
+
+interface CachedOptionsData {
+  callOptions: OptionData[];
+  putOptions: OptionData[];
+  expirations: string[];
+  price: number | undefined;
+  timestamp: number;
+}
+
+const loadCachedData = (): CachedOptionsData | null => {
+  if (typeof window === 'undefined') return null; // SSR safety
+  try {
+    const raw = window.sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed: CachedOptionsData = JSON.parse(raw);
+    if (Date.now() - parsed.timestamp > CACHE_EXPIRY_MS) return null; // expired
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveCachedData = (data: Omit<CachedOptionsData, 'timestamp'>) => {
+  if (typeof window === 'undefined') return; // SSR safety
+  try {
+    const payload: CachedOptionsData = { ...data, timestamp: Date.now() };
+    window.sessionStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore quota / serialisation errors */
+  }
+};
+
 export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [callOptions, setCallOptions] = useState<OptionData[]>([]);
   const [putOptions, setPutOptions] = useState<OptionData[]>([]);
@@ -232,6 +267,9 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSelectedExpiry(uniqueExp[0]);
       }
       console.log(`[DataProvider] Loaded ${calls.length} calls, ${puts.length} puts for ${uniqueExp.length} expirations (All Pages).`);
+
+      // Save to cache for faster next load
+      saveCachedData({ callOptions: calls, putOptions: puts, expirations: uniqueExp, price: currentPrice });
     } catch (err) {
       console.error('[DataProvider] Error loading options data:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -243,9 +281,26 @@ export const OptionsProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []);
 
-  // Initial data load
+  // --- Try load cached data on mount for perceived performance ---
+  useEffect(() => {
+    const cached = loadCachedData();
+    if (cached) {
+      console.log('[DataProvider] Loading data from cache');
+      setCallOptions(cached.callOptions);
+      setPutOptions(cached.putOptions);
+      setExpirations(cached.expirations);
+      setCurrentPrice(cached.price);
+      setLoading(false); // 表示更新を即座に完了
+    }
+  }, []);
+
+  // Initial data load (runs regardless, ensures data freshness)
   useEffect(() => {
     const initialLoad = async () => {
+      // Only show loader if we didn't satisfy via cache
+      if (!loadCachedData()) {
+        setLoading(true);
+      }
       const price = await fetchBtcSpotPrice();
       if (price !== undefined) {
         setCurrentPrice(price);

@@ -4,9 +4,11 @@ import OptionsVisualization from "../components/OptionsVisualization/OptionsVisu
 
 export default function OptionsPage() {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
       <Header />
-      <OptionsVisualization />
+      <main className="flex-1">
+        <OptionsVisualization />
+      </main>
     </div>
   );
 }

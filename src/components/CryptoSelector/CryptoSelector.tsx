@@ -37,9 +37,9 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({
 
   // ボタンのベーススタイル
   const baseButtonStyle = {
-    default: 'px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed',
-    light: 'px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed',
-    dark: 'px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium text-gray-300 hover:bg-funoption-card-bg-hover disabled:opacity-50 disabled:cursor-not-allowed'
+    default: 'px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed',
+    light: 'px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed',
+    dark: 'px-2 sm:px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium text-gray-300 hover:bg-funoption-card-bg-hover disabled:opacity-50 disabled:cursor-not-allowed'
   }[variant];
 
   // アクティブなボタンのスタイル
@@ -56,21 +56,24 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({
         onClick={() => onChange('BTC')}
         disabled={loading}
       >
-        {compact ? 'BTC' : `BTC (${formatCryptoPrice(cryptoPrices.BTC)})`}
+        <span className="sm:hidden">BTC</span>
+        <span className="hidden sm:inline">{compact ? 'BTC' : `BTC (${formatCryptoPrice(cryptoPrices.BTC)})`}</span>
       </button>
       <button
         className={`${baseButtonStyle} ${selectedCrypto === 'ETH' ? activeButtonStyle : ''}`}
         onClick={() => onChange('ETH')}
         disabled={loading}
       >
-        {compact ? 'ETH' : `ETH (${formatCryptoPrice(cryptoPrices.ETH)})`}
+        <span className="sm:hidden">ETH</span>
+        <span className="hidden sm:inline">{compact ? 'ETH' : `ETH (${formatCryptoPrice(cryptoPrices.ETH)})`}</span>
       </button>
       <button
         className={`${baseButtonStyle} ${selectedCrypto === 'SOL' ? activeButtonStyle : ''}`}
         onClick={() => onChange('SOL')}
         disabled={loading}
       >
-        {compact ? 'SOL' : `SOL (${formatCryptoPrice(cryptoPrices.SOL)})`}
+        <span className="sm:hidden">SOL</span>
+        <span className="hidden sm:inline">{compact ? 'SOL' : `SOL (${formatCryptoPrice(cryptoPrices.SOL)})`}</span>
       </button>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import OptionsChart from '../OptionsChart/OptionsChart';
 import OptionTradePanel from '../OptionTradePanel';
 import { OptionData, useOptions } from '../../providers/OptionsDataProvider';
@@ -57,9 +57,54 @@ const OptionsVisualization: React.FC = () => {
   const [tradePanelVisible, setTradePanelVisible] = useState<boolean>(false);
   const [selectedOptionDetail, setSelectedOptionDetail] = useState<OptionData | null>(null);
 
+  // ウィンドウサイズの状態管理
+  const [windowSize, setWindowSize] = useState<{ width: number; height: number }>(
+    { width: typeof window !== 'undefined' ? window.innerWidth : 800, height: typeof window !== 'undefined' ? window.innerHeight : 600 }
+  );
+
   // Wallet & Snackbar contexts for OptionTradePanel
   const wallet = useWallet();
   const { showSnackbar } = useSnackbar();
+
+  // 簡易 throttle 実装（追加依存なし）
+  function throttle<F extends (...args: any[]) => void>(func: F, wait: number): F {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let lastArgs: any[] | null = null;
+    return function(this: any, ...args: any[]) {
+      lastArgs = args;
+      if (!timeout) {
+        timeout = setTimeout(() => {
+          func.apply(this, lastArgs!);
+          timeout = null;
+        }, wait);
+      }
+    } as F;
+  }
+
+  // ウィンドウサイズの変更を検知するハンドラー
+  const handleResize = useCallback(
+    throttle(() => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    }, 200),
+    []
+  );
+
+  // ウィンドウサイズの変更を監視
+  useEffect(() => {
+    // クライアントサイドでのみ実行
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      // 初期サイズを設定
+      handleResize();
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [handleResize]);
 
   // 初期化時に最初の満期日を選択
   useEffect(() => {
@@ -90,7 +135,7 @@ const OptionsVisualization: React.FC = () => {
           ETH: priceData['ETHUSDC'] || 0,
           SOL: priceData['SOLUSDC'] || 0
         });
-        
+
         console.log('リアルタイム価格取得成功:', priceData);
       } catch (error) {
         console.error('リアルタイム価格データの取得に失敗しました:', error);
@@ -125,10 +170,10 @@ const OptionsVisualization: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] bg-[linear-gradient(135deg,#0D0D0D_0%,#121212_100%)] text-white font-grotesk p-4 md:p-6">
+    <div className="min-h-screen bg-[#0D0D0D] bg-[linear-gradient(135deg,#0D0D0D_0%,#121212_100%)] text-white font-grotesk p-3 sm:p-4 md:p-6">
 
       {/* Tab Switching */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
         <OptionTypeSelector
           selectedType={activeTab}
           onChange={setActiveTab}
@@ -145,10 +190,10 @@ const OptionsVisualization: React.FC = () => {
       </div>
 
       {/* Date Selection */}
-      <div className="mb-6 overflow-x-auto pb-2 bg-funoption-bg rounded-options p-2.5">
+      <div className="mb-4 sm:mb-6 overflow-x-auto pb-2 bg-funoption-bg rounded-options p-2 sm:p-2.5">
         {expirations && expirations.length > 0 ? (
-          <ExpiryDateSelector 
-            expirations={expirations.filter(exp => exp !== 'all')} 
+          <ExpiryDateSelector
+            expirations={expirations.filter(exp => exp !== 'all')}
             selectedExpiry={selectedExpiry}
             onChange={setSelectedExpiry}
             showAllOption={true}
@@ -161,22 +206,50 @@ const OptionsVisualization: React.FC = () => {
       </div>
 
       {/* Options Chart */}
-      <div className="relative rounded-2xl overflow-hidden mb-6 animate-fadeIn">
-        {filteredOptions && filteredOptions.length > 0 ? (
-          <OptionsChart
-            data={filteredOptions}
-            currentPrice={cryptoPrices[selectedCrypto] || 0}
-            cryptoSymbol={selectedCrypto}
-            width={800}
-            height={500}
-            onOptionSelect={handleOptionSelect}
-          />
-        ) : (
-          <div className="py-12 px-4 bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl text-center shadow-xl">
-            <p className="text-funoption-text-muted">表示するデータがありません。他の満期日を選択してください。</p>
+      {(() => {
+        const isMobile = windowSize.width < 640;
+        // モバイル／デスクトップでのウィンドウ幅に合わせてチャートサイズを調整
+        // モバイルでは画面幅 - 32px (padding想定) を基準にし、最小幅を360pxに固定
+        const chartWidth = isMobile
+          ? Math.max(windowSize.width - 32, 360)
+          : (windowSize.width - 64); // Desktop width based on window, no 1200px cap for aspect ratio calculation
+
+        // 高さはアスペクト比を維持しつつ、最大800pxに制限
+        const chartHeight = isMobile
+          ? Math.round(chartWidth * 0.9)
+          : Math.min(Math.round(chartWidth * 0.66), 800);
+        return (
+          <div className="relative rounded-2xl mb-4 sm:mb-6 animate-fadeIn h-full">
+            {filteredOptions && filteredOptions.length > 0 ? (
+              <div
+                className={isMobile ? "w-full overflow-x-auto" : "w-full overflow-x-auto"}
+                style={{ height: `${chartHeight}px` }}
+              >
+                {/* Inner div now takes full width of its parent */}
+                <div
+                  className="w-full"
+                >
+                  <OptionsChart
+                    data={filteredOptions}
+                    currentPrice={cryptoPrices[selectedCrypto] || 0}
+                    cryptoSymbol={selectedCrypto}
+                    width={chartWidth}
+                    height={chartHeight}
+                    onOptionSelect={handleOptionSelect}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 sm:py-12 px-3 sm:px-4 bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl text-center shadow-xl">
+                <p className="text-funoption-text-muted">
+                  表示するデータがありません。他の満期日を選択してください。
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
+
 
       {loading ? (
         <div className="flex items-center justify-center py-8 text-funoption-text-muted animate-pulse">
@@ -192,8 +265,8 @@ const OptionsVisualization: React.FC = () => {
         </div>
       ) : (
         tradePanelVisible && selectedOptionDetail && (
-          <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50" 
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={(e) => { if (e.target === e.currentTarget) { setTradePanelVisible(false); setSelectedOptionDetail(null); } }}
           >
             <OptionTradePanel

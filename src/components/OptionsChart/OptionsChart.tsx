@@ -54,7 +54,12 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
   const drawChart = () => {
     if (!svgRef.current) return;
 
-    const margin = { top: 60, right: 60, bottom: 80, left: 80 };
+    const isMobile = containerWidth < 640;
+    const marginTop = Math.max(30, height * 0.10);
+    const marginBottom = Math.max(70, height * 0.20);
+    const marginLeft = isMobile ? Math.max(30, containerWidth * 0.10) : 80;
+    const marginRight = isMobile ? Math.max(20, containerWidth * 0.05) : 60;
+    const margin = { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft };
     const innerWidth = containerWidth - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -166,11 +171,11 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     const heatLegendGroup = chartGroup
       .append('g')
       .attr('class', 'heatmap-legend')
-      .attr('transform', `translate(0, ${innerHeight + 20})`);
+      .attr('transform', `translate(0, ${innerHeight + (marginBottom * 0.6)})`); // Position legend below title within dynamic margin
     // 凡例見出し: ヒートマップ強度を表示
     heatLegendGroup.append('text')
       .attr('x', 0)
-      .attr('y', 20)
+      .attr('y', 12) // Made legend title more compact
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
       .text('Proximity to nearest option');
@@ -178,46 +183,55 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     for (let i = 0; i <= steps; i++) {
       heatLegendGroup.append('rect')
         .attr('x', i * (heatLegendWidth / steps))
-        .attr('y', 30)
+        .attr('y', 28) // Shifted color bar down slightly
         .attr('width', heatLegendWidth / steps)
         .attr('height', heatLegendHeight)
         .attr('fill', getIntensityColor(i / steps, true));
     }
     heatLegendGroup.append('text')
       .attr('x', 0)
-      .attr('y', heatLegendHeight + 40)
+      .attr('y', 28 + heatLegendHeight + 10) // Adjusted 'Low' text for new color bar position (28 + 8 + 10 = 46)
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
       .text('Low');
     heatLegendGroup.append('text')
       .attr('x', heatLegendWidth)
-      .attr('y', heatLegendHeight + 40)
+      .attr('y', 28 + heatLegendHeight + 10) // Adjusted 'High' text for new color bar position (28 + 8 + 10 = 46)
       .attr('text-anchor', 'end')
       .attr('fill', ChartStyles.colors.legendText)
       .attr('font-size', ChartStyles.sizes.fontSize.small)
       .text('High');
 
     /* ---------------------------- 軸 ---------------------------- */
-    chartGroup
+    const xAxisG = chartGroup
       .append('g')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).tickFormat((d) => formatCurrency(d as number)).ticks(5))
-      .selectAll('text')
-      .style('fill', ChartStyles.colors.axis);
+      .call(d3.axisBottom(xScale).tickFormat((d) => formatCurrency(d as number)).ticks(Math.max(2, Math.floor(innerWidth / 100)))); // Dynamic ticks
 
+    xAxisG.selectAll('text') // Style the tick labels
+      .style('fill', ChartStyles.colors.axis)
+      .style('font-size', ChartStyles.sizes.fontSize.small) // Changed to 'small' to fix TS error
+      .attr('transform', 'rotate(-45)')
+      .attr('text-anchor', 'end')
+      .attr('dx', '-.8em')
+      .attr('dy', '.15em');
+
+    // Append X-axis title to the xAxisG
+    xAxisG.append('text')
+      .attr('class', 'axis-label')
+      .attr('x', innerWidth / 2)
+      .attr('y', marginBottom * 0.4) // Position title within dynamic margin
+      .attr('text-anchor', 'middle')
+      .attr('fill', ChartStyles.colors.axisLabel)
+      .style('font-size', ChartStyles.sizes.fontSize.small) // Ensure consistent font size
+      .text(`Strike Price (${cryptoSymbol} / USDT)`);
+
+    // Y-Axis
     chartGroup
       .append('g')
       .call(d3.axisLeft(yScale).tickFormat((d) => formatCurrency(d as number)).ticks(5))
       .selectAll('text')
       .style('fill', ChartStyles.colors.axis);
-
-    chartGroup
-      .append('text')
-      .attr('x', innerWidth / 2)
-      .attr('y', innerHeight + 40)
-      .attr('text-anchor', 'middle')
-      .attr('fill', ChartStyles.colors.axisLabel)
-      .text('Strike Price (USDT)');
 
     chartGroup
       .append('text')
@@ -643,16 +657,28 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
   };
 
   useEffect(() => {
-    console.log('[Chart] Received data:', data);
-    if (data.length) drawChart();
-  }, [data, currentPrice, containerWidth]);
+    console.log('[Chart] Effect triggered. Data length:', data?.length, 'CW:', containerWidth, 'H:', height, 'CP:', currentPrice);
+    if (data && data.length > 0 && containerWidth > 0 && height > 0) {
+      drawChart();
+    } else {
+      // Clear SVG if conditions for drawing are not met (e.g., no data, invalid dimensions)
+      if (svgRef.current) {
+        d3.select(svgRef.current).selectAll("*").remove();
+        console.log('[Chart] Cleared SVG content.');
+      }
+    }
+  }, [data, currentPrice, containerWidth, height]); // Added height to dependencies
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl shadow-xl p-4 font-grotesk animate-fadeIn overflow-hidden"
+      className="relative w-full bg-gradient-to-b from-funoption-bg to-funoption-bg-dark rounded-2xl shadow-xl font-grotesk animate-fadeIn overflow-hidden" // Removed p-4
+      style={{ height: `${height}px` }} // Apply the height prop here
     >
-      <svg ref={svgRef} className="w-full h-96 md:h-[600px] block overflow-visible" />
+      <svg
+        ref={svgRef}
+        className="w-full h-full block overflow-visible" // Use h-full, retain overflow-visible
+      />
       <div
         ref={tooltipRef}
         className="absolute z-50 hidden bg-funoption-bg/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-funoption-gold/30 text-xs pointer-events-none max-w-[220px] leading-relaxed"
