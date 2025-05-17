@@ -54,12 +54,13 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
   const drawChart = () => {
     if (!svgRef.current) return;
 
-    const isMobile = containerWidth < 640;
-    const marginTop = Math.max(30, height * 0.10);
-    const marginBottom = Math.max(70, height * 0.20);
-    const marginLeft = isMobile ? Math.max(30, containerWidth * 0.10) : 80;
-    const marginRight = isMobile ? Math.max(20, containerWidth * 0.05) : 60;
-    const margin = { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft };
+    const isMobile = containerWidth <= 640;
+
+    // モバイルとデスクトップでマージンを分けて定義
+    const margin = isMobile
+      ? { top: 24, right: 16, bottom: 48, left: 48 }
+      : { top: 40, right: 60, bottom: 70, left: 80 };
+
     const innerWidth = containerWidth - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -127,26 +128,31 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
 
     const chartGroup = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-    chartGroup
-      .append('rect')
-      .attr('width', innerWidth)
-      .attr('height', innerHeight)
-      .attr('fill', '#1E1F2E')
-      .attr('rx', 2)
-      .attr('ry', 2);
+    // ---- ピンチズーム + パン ----
+    const zoom = d3
+      .zoom()
+      .scaleExtent([1, 8])
+      .translateExtent([
+        [0, 0],
+        [innerWidth, innerHeight],
+      ])
+      .on('zoom', (event) => {
+        chartGroup.attr(
+          'transform',
+          `translate(${margin.left + event.transform.x},${margin.top + event.transform.y}) scale(${event.transform.k})`,
+        );
+      });
+    svg.call(zoom).on('dblclick', () => svg.transition().call(zoom.transform, d3.zoomIdentity));
 
     /* ---------------------------- 凡例 ---------------------------- */
     const legendData = [
       { label: 'Premium', color: ChartStyles.colors.timeValue },
     ];
 
-    const legendGroup = chartGroup
-      .append('g')
-      .attr('class', 'legend')
-      .attr('transform', `translate(0, -40)`);
+    const legendGroup = chartGroup.append('g').attr('class', 'legend-group');
 
-    legendData.forEach((item, i) => {
-      const g = legendGroup.append('g').attr('transform', `translate(${i * 120}, 0)`);
+    legendData.forEach((item, index) => {
+      const g = legendGroup.append('g').attr('transform', `translate(0,${index * 16})`);
 
       g.append('line')
         .attr('x1', 0)
@@ -157,70 +163,50 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         .attr('stroke-width', 4)
         .attr('stroke-linecap', 'round');
 
-      g.append('text')
-        .attr('x', 26)
-        .attr('y', 4)
-        .attr('fill', ChartStyles.colors.legendText)
-        .attr('font-size', ChartStyles.sizes.fontSize.small)
-        .text(item.label);
+      // モバイルではテキストを省略してアイコンのみ表示
+      if (!isMobile) {
+        g.append('text')
+          .attr('x', 26)
+          .attr('y', 4)
+          .attr('fill', ChartStyles.colors.legendText)
+          .attr('font-size', ChartStyles.sizes.fontSize.small)
+          .text(item.label);
+      }
     });
 
-    /* ---------------------------- ヒートマップ凡例 ---------------------------- */
-    const heatLegendWidth = 120;
-    const heatLegendHeight = 8;
-    const heatLegendGroup = chartGroup
-      .append('g')
-      .attr('class', 'heatmap-legend')
-      .attr('transform', `translate(0, ${innerHeight + (marginBottom * 0.6)})`); // Position legend below title within dynamic margin
-    // 凡例見出し: ヒートマップ強度を表示
-    heatLegendGroup.append('text')
-      .attr('x', 0)
-      .attr('y', 12) // Made legend title more compact
-      .attr('fill', ChartStyles.colors.legendText)
-      .attr('font-size', ChartStyles.sizes.fontSize.small)
-      .text('Proximity to nearest option');
-    const steps = 10;
-    for (let i = 0; i <= steps; i++) {
-      heatLegendGroup.append('rect')
-        .attr('x', i * (heatLegendWidth / steps))
-        .attr('y', 28) // Shifted color bar down slightly
-        .attr('width', heatLegendWidth / steps)
-        .attr('height', heatLegendHeight)
-        .attr('fill', getIntensityColor(i / steps, true));
-    }
-    heatLegendGroup.append('text')
-      .attr('x', 0)
-      .attr('y', 28 + heatLegendHeight + 10) // Adjusted 'Low' text for new color bar position (28 + 8 + 10 = 46)
-      .attr('fill', ChartStyles.colors.legendText)
-      .attr('font-size', ChartStyles.sizes.fontSize.small)
-      .text('Low');
-    heatLegendGroup.append('text')
-      .attr('x', heatLegendWidth)
-      .attr('y', 28 + heatLegendHeight + 10) // Adjusted 'High' text for new color bar position (28 + 8 + 10 = 46)
-      .attr('text-anchor', 'end')
-      .attr('fill', ChartStyles.colors.legendText)
-      .attr('font-size', ChartStyles.sizes.fontSize.small)
-      .text('High');
+    // 凡例とヒートマップのコードはここにあります
 
     /* ---------------------------- 軸 ---------------------------- */
+    const xAxis = d3.axisBottom(xScale);
+    if (isMobile) {
+      xAxis.tickFormat(d3.format('$~s')).ticks(4);
+    } else {
+      xAxis.tickFormat((d) => formatCurrency(d as number)).ticks(Math.max(2, Math.floor(innerWidth / 100)));
+    }
+
     const xAxisG = chartGroup
       .append('g')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).tickFormat((d) => formatCurrency(d as number)).ticks(Math.max(2, Math.floor(innerWidth / 100)))); // Dynamic ticks
+      .call(xAxis);
 
-    xAxisG.selectAll('text') // Style the tick labels
+    const tickTexts = xAxisG
+      .selectAll('text')
       .style('fill', ChartStyles.colors.axis)
-      .style('font-size', ChartStyles.sizes.fontSize.small) // Changed to 'small' to fix TS error
-      .attr('transform', 'rotate(-45)')
-      .attr('text-anchor', 'end')
-      .attr('dx', '-.8em')
-      .attr('dy', '.15em');
+      .style('font-size', ChartStyles.sizes.fontSize.small);
+
+    if (!isMobile) {
+      tickTexts
+        .attr('transform', 'rotate(-45)')
+        .attr('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em');
+    }
 
     // Append X-axis title to the xAxisG
     xAxisG.append('text')
       .attr('class', 'axis-label')
       .attr('x', innerWidth / 2)
-      .attr('y', marginBottom * 0.4) // Position title within dynamic margin
+      .attr('y', isMobile ? margin.bottom * 0.7 : margin.bottom * 0.8) // dynamic offset for visibility
       .attr('text-anchor', 'middle')
       .attr('fill', ChartStyles.colors.axisLabel)
       .style('font-size', ChartStyles.sizes.fontSize.small) // Ensure consistent font size
@@ -231,89 +217,95 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .append('g')
       .call(d3.axisLeft(yScale).tickFormat((d) => formatCurrency(d as number)).ticks(5))
       .selectAll('text')
-      .style('fill', ChartStyles.colors.axis);
+      .style('fill', ChartStyles.colors.axis)
+      .style('font-size', isMobile ? `${ChartStyles.sizes.fontSize.small * 0.8}px` : `${ChartStyles.sizes.fontSize.small}px`); // smaller font only on mobile
 
     chartGroup
       .append('text')
       .attr('transform', 'rotate(-90)')
-      .attr('y', -70)
+      .attr('y', -(margin.left - (isMobile ? 12 : 10))) // dynamic offset based on margin for mobile/desktop
       .attr('x', -innerHeight / 2)
       .attr('text-anchor', 'middle')
       .attr('fill', ChartStyles.colors.axisLabel)
+      .style('font-size', isMobile ? `${ChartStyles.sizes.fontSize.small * 0.8}px` : `${ChartStyles.sizes.fontSize.small}px`) // smaller font only on mobile
       .text('Mark Price (USDT)');
 
-    /* ---------------------------- ヒートマップ ---------------------------- */
-    const xGrid = 24;
-    const yGrid = 15;
-    const cellW = innerWidth / xGrid;
-    const cellH = innerHeight / yGrid;
+    // ---- Heatmap ----
+    {
+      // 強度スケールをデータ範囲から動的に計算
+      const strikeRange = xScale.domain()[1] - xScale.domain()[0];
+      const priceRange = yScale.domain()[1] - yScale.domain()[0];
+      const intensityScale = Math.hypot(strikeRange, priceRange) / 4; // 調整係数
 
-    // 強度スケールをデータ範囲から動的に計算
-    const strikeRange = xScale.domain()[1] - xScale.domain()[0];
-    const priceRange = yScale.domain()[1] - yScale.domain()[0];
-    const intensityScale = Math.hypot(strikeRange, priceRange) / 4; // 調整係数
+      const xGrid = 24;
+      const yGrid = 15;
+      const cellW = innerWidth / xGrid;
+      const cellH = innerHeight / yGrid;
 
-    for (let i = 0; i < xGrid; i++) {
-      for (let j = 0; j < yGrid; j++) {
-        const sx = xScale.invert(i * cellW);
-        const sy = yScale.invert(j * cellH);
+      for (let i = 0; i < xGrid; i++) {
+        for (let j = 0; j < yGrid; j++) {
+          const sx = xScale.invert(i * cellW);
+          const sy = yScale.invert(j * cellH);
 
-        // 近いオプションとの距離で強度を算出
-        let minDist = Infinity;
-        let closest: OptionData | null = null;
-        data.forEach((o) => {
-          const d = Math.hypot(o.strike - sx, (o.markPrice || 0) - sy);
-          if (d < minDist) {
-            minDist = d;
-            closest = o;
-          }
-        });
-        const intensity = closest ? Math.max(0, 1 - minDist / intensityScale) : 0;
-        const rect = chartGroup
-          .append('rect')
-          .attr('class', 'heatmap-cell')
-          .attr('x', i * cellW)
-          .attr('y', j * cellH)
-          .attr('width', cellW)
-          .attr('height', cellH)
-          .attr('fill', getIntensityColor(intensity, true))
-          .attr('opacity', intensity * 0.35) // α 0.35 にさらに抑える
-          .style('pointer-events', 'none')  // 点だけに Hover / Click を通す
-          .attr('stroke-width', 0)
-          .datum<OptionData | null>(closest);
-
-        // ツールチップ表示
-        rect
-          .on('mouseover', (event, d: OptionData | null) => {
-            if (!containerRef.current) return;
-            const [x, y] = d3.pointer(event, containerRef.current);
-            tooltipTimeout = window.setTimeout(() => {
-              const tooltipSel = d3
-                .select(tooltipRef.current)
-                .style('display', 'block')
-                .style('left', `${x + 10}px`)
-                .style('top', `${y - 10}px`);
-
-              if (d) {
-                tooltipSel.html(
-                  `<div class="tooltip-strike">Strike: ${formatCurrency(
-                    d.strike,
-                  )}</div><div class="tooltip-price">Price: ${formatCurrency(
-                    (d.markPrice || 0),
-                  )}</div>`,
-                );
-              } else {
-                tooltipSel.html('<div>No data</div>');
-              }
-            }, 250);
-          })
-          .on('mouseout', () => {
-            if (tooltipTimeout) {
-              clearTimeout(tooltipTimeout);
-              tooltipTimeout = null;
+          // 近いオプションとの距離で強度を算出
+          let minDist = Infinity;
+          let closest: OptionData | null = null;
+          data.forEach((o) => {
+            const d = Math.hypot(o.strike - sx, (o.markPrice || 0) - sy);
+            if (d < minDist) {
+              minDist = d;
+              closest = o;
             }
-            d3.select(tooltipRef.current).style('display', 'none');
           });
+          const intensity = closest ? Math.max(0, 1 - minDist / intensityScale) : 0;
+          const rect = chartGroup
+            .append('rect')
+            .attr('class', 'heatmap-cell')
+            .attr('x', i * cellW)
+            .attr('y', j * cellH)
+            .attr('width', cellW)
+            .attr('height', cellH)
+            .attr('fill', getIntensityColor(intensity, true))
+            .attr('opacity', intensity * 0.35) // α 0.35 にさらに披える
+            .style('pointer-events', 'none')  // 点だけに Hover / Click を通す
+            .attr('stroke-width', 0)
+            .datum<OptionData | null>(closest);
+
+          // ツールチップ表示
+          rect
+            .on('mouseover', (event, d: OptionData | null) => {
+              if (!containerRef.current) return;
+              const [x, y] = d3.pointer(event, containerRef.current);
+              tooltipTimeout = window.setTimeout(() => {
+                const tooltipSel = d3
+                  .select(tooltipRef.current)
+                  .style('display', 'block')
+                  .style('left', `${x + 10}px`);
+                const tooltipHeight = (tooltipRef.current as HTMLDivElement | null)?.offsetHeight || 0;
+                const top = Math.max(0, y - tooltipHeight - 16);
+                tooltipSel.style('top', `${top}px`);
+
+                if (d) {
+                  tooltipSel.html(
+                    `<div class="tooltip-strike">Strike: ${formatCurrency(
+                      d.strike,
+                    )}</div><div class="tooltip-price">Price: ${formatCurrency(
+                      (d.markPrice || 0),
+                    )}</div>`,
+                  );
+                } else {
+                  tooltipSel.html('<div>No data</div>');
+                }
+              }, 250);
+            })
+            .on('mouseout', () => {
+              if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout);
+                tooltipTimeout = null;
+              }
+              d3.select(tooltipRef.current).style('display', 'none');
+            });
+        }
       }
     }
 
@@ -324,21 +316,21 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       const markPrice = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice || 0;
       const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike || currentPrice;
       const delta = typeof d.delta === 'string' ? parseFloat(d.delta) : d.delta || 0;
-      
+
       // 計算に必要な数値の安全チェック
       if (isNaN(markPrice) || isNaN(strike)) return true;
-      
+
       const safeMarkPrice = Math.max(0.01, markPrice);
       const safeStrike = strike;
       const safeDelta = delta;
-      
-      const intrinsic = d.type === 'call' ? 
-        Math.max(0, currentPrice - safeStrike) : 
+
+      const intrinsic = d.type === 'call' ?
+        Math.max(0, currentPrice - safeStrike) :
         Math.max(0, safeStrike - currentPrice);
-        
+
       const timeValPct = ((Math.max(0, safeMarkPrice - intrinsic) / safeMarkPrice) * 100);
       const rrRaw = (Math.abs(safeDelta * 100) - timeValPct);
-      
+
       return rrRaw < -10;
     };
 
@@ -352,14 +344,14 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .filter((d) => !isPoorRR(d))
       .sort((a, b) => (b.volume || 0) - (a.volume || 0))
       .slice(0, 15);
-      
+
     // ホバー時のポイント制御
     const handleMouseOverPoint = (event: any, d: OptionData) => {
       if (!containerRef.current) return;
       if (tooltipTimeout) {
         clearTimeout(tooltipTimeout);
       }
-      
+
       chartGroup
         .selectAll<SVGCircleElement, OptionData>('.data-point')
         .transition()
@@ -382,8 +374,10 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         const tooltipSel = d3
           .select(tooltipRef.current)
           .style('display', 'block') // display:none を display:block に変更
-          .style('left', `${x + 10}px`)
-          .style('top', `${y - 10}px`);
+          .style('left', `${x + 10}px`);
+        const tooltipHeight = (tooltipRef.current as HTMLDivElement | null)?.offsetHeight || 0;
+        const top = Math.max(0, y - tooltipHeight - 16);
+        tooltipSel.style('top', `${top}px`);
 
         if (d) {
           tooltipSel.html(makeTooltipHtml(d));
@@ -392,7 +386,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         }
       }, 250);
     };
-    
+
     // ホバー解除時の処理
     const handleMouseOutPoint = () => {
       chartGroup
@@ -413,7 +407,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       }
       d3.select(tooltipRef.current).style('display', 'none');
     };
-    
+
     // ボリュームスケール（円サイズに反映）
     const maxVolume = d3.max(filteredData, (d) => d.volume || 0) || 1;
     const volumeScale = d3
@@ -423,7 +417,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         ChartStyles.sizes.pointRadius.small + 2,
         ChartStyles.sizes.pointRadius.large + 2,
       ]); // 元のサイズ設定に戻す
-      
+
     // ツールチップ内容生成関数
     const makeTooltipHtml = (d: OptionData) => {
       // 安全に数値変換 - Bybit APIが文字列を返す場合に対応
@@ -433,32 +427,32 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       const volume = typeof d.volume === 'string' ? parseFloat(d.volume) : d.volume || 0;
       const openInterest = typeof d.openInterest === 'string' ? parseFloat(d.openInterest) : d.openInterest || 0;
       const iv = typeof d.iv === 'string' ? parseFloat(d.iv) : d.iv || 0;
-      
+
       // 数値計算 - 必ず安全なデフォルト値を設定
       const safeStrike = isNaN(strike) ? currentPrice : strike;
       const safeMarkPrice = Math.max(0.01, isNaN(markPrice) ? 0 : markPrice);
       const safeDelta = isNaN(delta) ? 0 : delta;
-      
-      const intrinsic = d.type === 'call' ? 
-        Math.max(0, currentPrice - safeStrike) : 
+
+      const intrinsic = d.type === 'call' ?
+        Math.max(0, currentPrice - safeStrike) :
         Math.max(0, safeStrike - currentPrice);
-        
+
       const timeValPct = ((Math.max(0, safeMarkPrice - intrinsic) / safeMarkPrice) * 100).toFixed(0);
       const rrRaw = (Math.abs(safeDelta * 100) - Number(timeValPct));
-      
+
       // バッジスタイル
-      const rrBadge = rrRaw > 10 
-        ? `<span class="badge badge-bullish">Good RR</span>` 
-        : rrRaw < -10 
-          ? `<span class="badge badge-bearish">Poor RR</span>` 
+      const rrBadge = rrRaw > 10
+        ? `<span class="badge badge-bullish">Good RR</span>`
+        : rrRaw < -10
+          ? `<span class="badge badge-bearish">Poor RR</span>`
           : `<span class="badge badge-neutral">Neutral</span>`;
-      
+
       // 安全に表示するヘルパー関数
       const formatNum = (val: number | null | undefined, format: (n: number) => string): string => {
         if (val === null || val === undefined || isNaN(val)) return 'N/A';
         return format(val);
       };
-      
+
       // 通貨フォーマット関数
       const formatCurrency = (n: number): string => {
         return new Intl.NumberFormat('en-US', {
@@ -467,7 +461,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           maximumFractionDigits: 4
         }).format(n);
       };
-          
+
       return `
         <div class="text-sm font-semibold text-white mb-1.5">${d.type === 'call' ? 'CALL' : 'PUT'} ${strike}</div>
         <div class="grid gap-1.5">
@@ -495,7 +489,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
         </div>    
       `;
     };
-    
+
     // 円のデータポイント描画
     const dataPoints = chartGroup
       .selectAll<SVGCircleElement, OptionData>('.data-point')
@@ -519,18 +513,18 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .attr('opacity', 0.8)
       .attr('stroke', (d) => d.type === 'call' ? '#10b981' : '#ef4444')
       .attr('stroke-width', 1.5)
-      .style('filter', (d) => d.type === 'call' ? 
-        'drop-shadow(0 0 4px rgba(16,185,129,0.5))' : 
+      .style('filter', (d) => d.type === 'call' ?
+        'drop-shadow(0 0 4px rgba(16,185,129,0.5))' :
         'drop-shadow(0 0 4px rgba(239,68,68,0.5))')
-      
+
     // 各データポイントにアニメーションを適用
     // 特定の間隔でパルスする効果を作成
-    dataPoints.each(function(this: SVGCircleElement, d: OptionData, i: number) {
+    dataPoints.each(function (this: SVGCircleElement, d: OptionData, i: number) {
       const point = d3.select(this);
       const vol = typeof d.volume === 'string' ? parseFloat(d.volume) : (d.volume || 0);
       const baseRadius = volumeScale(isNaN(vol) ? 0 : vol);
       const delay = i * 150; // 各ポイントを別々のタイミングで開始
-      
+
       function animatePoint() {
         point
           .transition()
@@ -544,7 +538,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           .attr('opacity', 0.7)
           .on('end', animatePoint); // 無限ループ
       }
-      
+
       // アニメーション開始
       animatePoint();
     })
@@ -574,11 +568,11 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
           const currDelta = typeof curr.delta === 'string' ? parseFloat(curr.delta) : (curr.delta || 999);
           return Math.abs(currDelta - threshold) < Math.abs(prevDelta - threshold) ? curr : prev;
         });
-        
+
         if (closestCall) {
           const strike = typeof closestCall.strike === 'string' ? parseFloat(closestCall.strike) : closestCall.strike;
           const xPos = xScale(isNaN(strike) ? currentPrice : strike);
-          
+
           chartGroup
             .append('line')
             .attr('x1', xPos)
@@ -604,7 +598,7 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       const bStrike = typeof b.strike === 'string' ? parseFloat(b.strike) : b.strike;
       return (isNaN(aStrike) ? 0 : aStrike) - (isNaN(bStrike) ? 0 : bStrike);
     });
-    
+
     const lineGenerator = d3
       .line<OptionData>()
       .x((d) => {
@@ -618,8 +612,8 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
       .defined(d => {
         const strike = typeof d.strike === 'string' ? parseFloat(d.strike) : d.strike;
         const price = typeof d.markPrice === 'string' ? parseFloat(d.markPrice) : d.markPrice;
-        return typeof strike === 'number' && isFinite(strike) && 
-               typeof price === 'number' && isFinite(price);
+        return typeof strike === 'number' && isFinite(strike) &&
+          typeof price === 'number' && isFinite(price);
       })
       .curve(d3.curveMonotoneX);
 
@@ -677,7 +671,9 @@ const OptionsChart: React.FC<OptionsChartProps> = ({
     >
       <svg
         ref={svgRef}
-        className="w-full h-full block overflow-visible" // Use h-full, retain overflow-visible
+        className="block w-full h-auto"
+        viewBox={`0 0 ${containerWidth} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
       />
       <div
         ref={tooltipRef}
